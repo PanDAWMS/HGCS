@@ -55,16 +55,6 @@ def get_condor_job_id(job):
 
 #===============================================================
 
-class Singleton(type):
-    def __init__(cls, name, bases, dct):
-        cls.__instance = None
-        type.__init__(cls, name, bases, dct)
-    def __call__(cls, *args, **kwargs):
-        if cls.__instance is None:
-            cls.__instance = type.__call__(cls, *args,**kwargs)
-        return cls.__instance
-
-
 class ThreadBase(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -79,10 +69,22 @@ class ThreadBase(threading.Thread):
 
 
 class MySchedd(htcondor.Schedd):
-    __metaclass__ = Singleton
+    __instance = None
+    def __new__(cls, *args, **kwargs):
+        if not isinstance(cls.__instance, cls):
+            cls.__instance = super(MySchedd, cls).__new__(cls, *args, **kwargs)
+        return cls.__instance
 
 
 class LogRetriever(ThreadBase):
+
+    requirements = (
+                    'isString(SUBMIT_UserLog) '
+                    '&& LeaveJobInQueue isnt false '
+                    '&& ( JobStatus == 4 '
+                    '|| JobStatus == 3 ) '
+                )
+
     def __init__(self, retrieve_mode='copy', sleep_period=60, flush_period=86400):
         ThreadBase.__init__(self)
         self.retrieve_mode = retrieve_mode
@@ -98,13 +100,21 @@ class LogRetriever(ThreadBase):
             if time.time() > last_flush_timestamp + self.flush_period:
                 last_flush_timestamp = time.time()
                 already_retrived_job_id_set = set([])
-                self.logger.debug('flushed already_retrived_job_id_set')
-            schedd = MySchedd()
-            requirements = (
-                'JobStatus == 4 '
-                '|| JobStatus == 3 '
-            )
-            for job in schedd.xquery(requirements=requirements):
+                self.logger.info('flushed already_retrived_job_id_set')
+            n_try = 999
+            for i_try in range(1, n_try + 1):
+                try:
+                    schedd = MySchedd()
+                    break
+                except RuntimeError as e:
+                    if i_try < n_try:
+                        self.logger.warning('{0} . Retry...'.format(e))
+                        time.sleep(3)
+                    else:
+                        self.logger.error('{0} . No more retry. Exit'.format(e))
+                        return
+
+            for job in schedd.xquery(requirements=self.requirements):
                 job_id = get_condor_job_id(job)
                 if job_id in already_retrived_job_id_set:
                     continue
@@ -117,15 +127,40 @@ class LogRetriever(ThreadBase):
                         already_retrived_job_id_set.add(job_id)
                 elif self.retrieve_mode == 'condor':
                     self.via_condor_retrieve(job)
-            try:
-                schedd.edit(list(already_retrived_job_id_set), 'LeaveJobInQueue', 'false')
-            except RuntimeError:
-                self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
+            for job_id in already_retrived_job_id_set.copy():
+                n_try = 3
+                for i_try in range(1, n_try + 1):
+                    try:
+                        schedd.edit([job_id], 'LeaveJobInQueue', 'false')
+                    except RuntimeError:
+                        if i_try < n_try:
+                            self.logger.warning('failed to edit job {0} . Retry: {1}'.format(job_id, i_try))
+                            time.sleep(1)
+                        else:
+                            self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
+                    else:
+                        already_retrived_job_id_set.discard(job_id)
+                        break
+            n_try = 3
+            for i_try in range(1, n_try + 1):
+                try:
+                    schedd.edit(list(already_retrived_job_id_set), 'LeaveJobInQueue', 'false')
+                except RuntimeError:
+                    if i_try < n_try:
+                        self.logger.warning('failed to edit job {0} . Retry: {1}'.format(job_id, i_try))
+                        time.sleep(1)
+                    else:
+                        self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
+                else:
+                    already_retrived_job_id_set.clear()
+                    break
+
             self.logger.info('run ends')
-            time.sleep(self.sleep_period )
+            time.sleep(self.sleep_period)
 
     def via_system(self, job, symlink_mode=False):
         retVal = True
+        job_id = get_condor_job_id(job)
         src_dir = job.get('Iwd')
         src_err_name = job.get('Err')
         src_out_name = job.get('Out')
@@ -137,6 +172,9 @@ class LogRetriever(ThreadBase):
         dest_out = None
         dest_log = job.get('SUBMIT_UserLog')
         transfer_remap_list = str(job.get('SUBMIT_TransferOutputRemaps')).split(';')
+        if not dest_log:
+            self.logger.debug('{0} has no attribute of spool. Skipped...'.format(job_id))
+            return True
         for _m in transfer_remap_list:
             match = re.search('([a-zA-Z0-9_.\-]+)=([a-zA-Z0-9_.\-/]+)', _m)
             if match:
@@ -189,6 +227,62 @@ class LogRetriever(ThreadBase):
         pass
 
 
+class CleanupDelayer(ThreadBase):
+
+    requirements = (
+        'SUBMIT_UserLog is undefined '
+        '&& LeaveJobInQueue is false '
+        '&& ( member(JobStatus, {1,2,5,6,7}) )'
+    )
+    ad_LeaveJobInQueue_template = (
+        '( time() - EnteredCurrentStatus ) < {delay_time} '
+        )
+
+    def __init__(self, sleep_period=60, delay_time=7200):
+        ThreadBase.__init__(self)
+        self.sleep_period = sleep_period
+        self.delay_time = delay_time
+
+    def run(self):
+        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        while True:
+            self.logger.info('run starts')
+            n_try = 999
+            for i_try in range(1, n_try + 1):
+                try:
+                    schedd = MySchedd()
+                    break
+                except RuntimeError as e:
+                    if i_try < n_try:
+                        self.logger.warning('{0} . Retry...'.format(e))
+                        time.sleep(3)
+                    else:
+                        self.logger.error('{0} . No more retry. Exit'.format(e))
+                        return
+            # for job in schedd.xquery(requirements=self.requirements):
+            #     job_id = get_condor_job_id(job)
+            #     self.logger.debug('to adjust LeaveJobInQueue of condor job {0}'.format(job_id))
+            job_id_list = [ get_condor_job_id(job) for job in schedd.xquery(requirements=self.requirements) ]
+            n_jobs = len(job_id_list)
+            n_try = 3
+            for i_try in range(1, n_try + 1):
+                try:
+                    schedd.edit(job_id_list, 'LeaveJobInQueue',
+                                    self.ad_LeaveJobInQueue_template.format(delay_time=self.delay_time))
+                except RuntimeError:
+                    if i_try < n_try:
+                        self.logger.warning('failed to edit {0} jobs . Retry: {1}'.format(n_jobs, i_try))
+                        time.sleep(1)
+                    else:
+                        self.logger.warning('failed to edit {0} jobs . Skipped...'.format(n_jobs))
+                else:
+                    self.logger.debug('adjusted LeaveJobInQueue of {0} condor jobs '.format(n_jobs))
+                    break
+
+            self.logger.info('run ends')
+            time.sleep(self.sleep_period)
+
+
 def testing():
     """
     Test function
@@ -203,8 +297,10 @@ def testing():
     # )
     # for job in schedd.xquery(requirements=requirements):
     #     print(job.get('ClusterId'), job.get('JobStatus'), job.get('SUBMIT_UserLog', None),  job.get('ffffff', None))
-    thr = LogRetriever()
-    thr.start()
+    thread_list = []
+    thread_list.append(LogRetriever())
+    thread_list.append(CleanupDelayer())
+    [ thr.start() for thr in thread_list ]
 
 
 def main():
