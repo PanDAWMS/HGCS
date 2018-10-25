@@ -343,7 +343,7 @@ class SDFFetcher(ThreadBase):
             self.logger.debug('{0} has no valid SUBMIT_UserLog nor UserLog. Skipped...'.format(job_id))
             return True
         dest_dir = os.path.dirname(dest_log)
-        dest_filename = re.sub(r'.log$', '.jdl', os.path.basename(src_path))
+        dest_filename = re.sub(r'.log$', '.jdl', os.path.basename(dest_log))
         dest_path = os.path.normpath(os.path.join(dest_dir, dest_filename))
         if not os.path.isfile(src_path):
             retVal = False
@@ -355,6 +355,7 @@ class SDFFetcher(ThreadBase):
             try:
                 shutil.copy2(src_path, dest_path)
                 if os.path.isfile(dest_path):
+                    os.chmod(dest_path, 0o644)
                     self.logger.debug('{0} copy made'.format(dest_path))
                 else:
                     retVal = None
