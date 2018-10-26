@@ -269,7 +269,7 @@ class CleanupDelayer(ThreadBase):
 class SDFFetcher(ThreadBase):
 
     requirements = (
-                    'sdfCopied is undefined '
+                    'sdfCopied == 0 '
                     '&& isString(sdfPath) '
                 )
 
@@ -306,7 +306,7 @@ class SDFFetcher(ThreadBase):
             n_try = 3
             for i_try in range(1, n_try + 1):
                 try:
-                    schedd.edit(list(already_sdf_copied_job_id_set), 'sdfCopied', 'true')
+                    schedd.edit(list(already_sdf_copied_job_id_set), 'sdfCopied', '1')
                 except RuntimeError:
                     if i_try < n_try:
                         self.logger.warning('failed to edit job {0} . Retry: {1}'.format(job_id, i_try))
@@ -319,7 +319,7 @@ class SDFFetcher(ThreadBase):
             n_try = 3
             for i_try in range(1, n_try + 1):
                 try:
-                    schedd.edit(list(failed_and_to_skip_sdf_copied_job_id_set), 'sdfCopied', 'false')
+                    schedd.edit(list(failed_and_to_skip_sdf_copied_job_id_set), 'sdfCopied', '2')
                 except RuntimeError:
                     if i_try < n_try:
                         self.logger.warning('failed to edit job {0} . Retry: {1}'.format(job_id, i_try))
@@ -352,6 +352,9 @@ class SDFFetcher(ThreadBase):
             retVal = False
             self.logger.error('no destination path for {0} . Skipped...'.format(src_path))
         if retVal is True:
+            if os.path.isfile(dest_path):
+                self.logger.debug('{0} file already exists. Skipped...'.format(dest_path))
+                return True
             try:
                 shutil.copy2(src_path, dest_path)
                 if os.path.isfile(dest_path):
