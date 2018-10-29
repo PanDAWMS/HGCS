@@ -78,6 +78,12 @@ class MySchedd(htcondor.Schedd):
 
 class LogRetriever(ThreadBase):
 
+    projection = [
+            'ClusterId', 'ProcId', 'JobStatus',
+            'Iwd', 'Err', 'Out', 'UserLog',
+            'SUBMIT_UserLog', 'SUBMIT_TransferOutputRemaps',
+        ]
+
     requirements = (
                     'isString(SUBMIT_UserLog) '
                     '&& LeaveJobInQueue isnt false '
@@ -113,7 +119,8 @@ class LogRetriever(ThreadBase):
                     else:
                         self.logger.error('{0} . No more retry. Exit'.format(e))
                         return
-            for job in schedd.xquery(requirements=self.requirements):
+            for job in schedd.xquery(requirements=self.requirements,
+                                        projection=self.projection):
                 job_id = get_condor_job_id(job)
                 if job_id in already_retrived_job_id_set:
                     continue
@@ -268,10 +275,18 @@ class CleanupDelayer(ThreadBase):
 
 class SDFFetcher(ThreadBase):
 
+    projection = [
+            'ClusterId', 'ProcId', 'JobStatus',
+            'UserLog', 'SUBMIT_UserLog',
+            'sdfPath', 'sdfCopied',
+        ]
+
     requirements = (
                     'sdfCopied == 0 '
                     '&& isString(sdfPath) '
                 )
+
+    limit = 2000
 
     def __init__(self, sleep_period=60):
         ThreadBase.__init__(self)
@@ -295,7 +310,9 @@ class SDFFetcher(ThreadBase):
                         return
             already_sdf_copied_job_id_set = set([])
             failed_and_to_skip_sdf_copied_job_id_set = set([])
-            for job in schedd.xquery(requirements=self.requirements):
+            for job in schedd.xquery(requirements=self.requirements,
+                                        projection=self.projection,
+                                        limit=self.limit):
                 job_id = get_condor_job_id(job)
                 self.logger.debug('to copy sdf for condor job {0}'.format(job_id))
                 retVal = self.via_system(job)
