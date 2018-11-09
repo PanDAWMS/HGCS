@@ -99,14 +99,14 @@ class LogRetriever(ThreadBase):
 
     def run(self):
         self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
-        already_retrived_job_id_set = set([])
+        already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:
             self.logger.info('run starts')
             if time.time() > last_flush_timestamp + self.flush_period:
                 last_flush_timestamp = time.time()
-                already_retrived_job_id_set = set([])
-                self.logger.info('flushed already_retrived_job_id_set')
+                already_handled_job_id_set = set()
+                self.logger.info('flushed already_handled_job_id_set')
             n_try = 999
             for i_try in range(1, n_try + 1):
                 try:
@@ -122,7 +122,7 @@ class LogRetriever(ThreadBase):
             for job in schedd.xquery(requirements=self.requirements,
                                         projection=self.projection):
                 job_id = get_condor_job_id(job)
-                if job_id in already_retrived_job_id_set:
+                if job_id in already_handled_job_id_set:
                     continue
                 self.logger.debug('to retrieve for condor job {0}'.format(job_id))
                 if self.retrieve_mode == 'symlink':
@@ -130,13 +130,13 @@ class LogRetriever(ThreadBase):
                 elif self.retrieve_mode == 'copy':
                     retVal = self.via_system(job)
                     if retVal:
-                        already_retrived_job_id_set.add(job_id)
+                        already_handled_job_id_set.add(job_id)
                 elif self.retrieve_mode == 'condor':
                     self.via_condor_retrieve(job)
             n_try = 3
             for i_try in range(1, n_try + 1):
                 try:
-                    schedd.edit(list(already_retrived_job_id_set), 'LeaveJobInQueue', 'false')
+                    schedd.edit(list(already_handled_job_id_set), 'LeaveJobInQueue', 'false')
                 except RuntimeError:
                     if i_try < n_try:
                         self.logger.warning('failed to edit job {0} . Retry: {1}'.format(job_id, i_try))
@@ -144,7 +144,7 @@ class LogRetriever(ThreadBase):
                     else:
                         self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
                 else:
-                    already_retrived_job_id_set.clear()
+                    already_handled_job_id_set.clear()
                     break
             self.logger.info('run ends')
             time.sleep(self.sleep_period)
@@ -286,16 +286,23 @@ class SDFFetcher(ThreadBase):
                     '&& isString(sdfPath) '
                 )
 
-    limit = 2000
+    limit = 30000
 
-    def __init__(self, sleep_period=60):
+    def __init__(self, sleep_period=60, flush_period=86400):
         ThreadBase.__init__(self)
         self.sleep_period = sleep_period
+        self.flush_period = flush_period
 
     def run(self):
         self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        already_handled_job_id_set = set()
+        last_flush_timestamp = time.time()
         while True:
             self.logger.info('run starts')
+            if time.time() > last_flush_timestamp + self.flush_period:
+                last_flush_timestamp = time.time()
+                already_handled_job_id_set = set()
+                self.logger.info('flushed already_handled_job_id_set')
             n_try = 999
             for i_try in range(1, n_try + 1):
                 try:
@@ -308,12 +315,14 @@ class SDFFetcher(ThreadBase):
                     else:
                         self.logger.error('{0} . No more retry. Exit'.format(e))
                         return
-            already_sdf_copied_job_id_set = set([])
-            failed_and_to_skip_sdf_copied_job_id_set = set([])
+            already_sdf_copied_job_id_set = set()
+            failed_and_to_skip_sdf_copied_job_id_set = set()
             for job in schedd.xquery(requirements=self.requirements,
                                         projection=self.projection,
                                         limit=self.limit):
                 job_id = get_condor_job_id(job)
+                if job_id in already_handled_job_id_set:
+                    continue
                 self.logger.debug('to copy sdf for condor job {0}'.format(job_id))
                 retVal = self.via_system(job)
                 if retVal is True:
@@ -331,6 +340,7 @@ class SDFFetcher(ThreadBase):
                     else:
                         self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
                 else:
+                    already_handled_job_id_set.update(already_sdf_copied_job_id_set)
                     already_sdf_copied_job_id_set.clear()
                     break
             n_try = 3
@@ -344,6 +354,7 @@ class SDFFetcher(ThreadBase):
                     else:
                         self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
                 else:
+                    already_handled_job_id_set.update(failed_and_to_skip_sdf_copied_job_id_set)
                     failed_and_to_skip_sdf_copied_job_id_set.clear()
                     break
             self.logger.info('run ends')
