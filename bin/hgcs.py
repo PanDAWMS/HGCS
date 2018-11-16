@@ -1,7 +1,9 @@
 import os
 import sys
+import inspect
 import errno
 import shutil
+import argparse
 
 import time
 import re
@@ -13,10 +15,17 @@ try:
 except ImportError:
     from thread import get_ident
 
-from six import configparser
-
 import htcondor
 import classad
+
+# Get main directory path
+_MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
+
+# Setup lib path
+dicos_lib_path = os.path.join( _MAIN_DIR, 'lib' )
+sys.path.insert(0, dicos_lib_path)
+
+from hgcs import hgcs_config    # noqa: E402
 
 #===============================================================
 
@@ -436,9 +445,46 @@ def main():
     """
     Main function
     """
-    pass
+    # command argparse
+    oparser = argparse.ArgumentParser(prog='hgcs', add_help=True)
+    subparsers = oparser.add_subparsers()
+    oparser.add_argument('-c', '--config', action='store', dest='conifg',
+                            metavar='<file>', help='Configuration file')
+    # start parsing
+    if len(sys.argv) == 1:
+        oparser.print_help()
+        sys.exit(1)
+    arguments = oparser.parse_args(sys.argv[1:])
+    # config file option
+    if os.path.isfile(arguments.config):
+        config_file_path = arguments.config
+    else:
+        print('Invalid configuration file: {0}'.format(arguments.config))
+        sys.exit(1)
+    # load config
+    try:
+        hgcs_config.load_config(config_file_path)
+    except IOError as e:
+        print('IOError: {0}'.format(e))
+        sys.exit(1)
+    except Exception as e:
+        print('Cannon load conifg: {0}'.format(e))
+        sys.exit(1)
+    # add threads of agents to run
+    thread_list = []
+    for name, class_obj in inspect.getmembers(sys.modules[__name__],
+        lambda m: inspect.isclass(m) and m.__module__ == __name__):
+        if hgcs_config.has_section(name) \
+            and hgcs_config.getboolean(name, 'enable', fallback=False):
+            param_dict = {
+                'sleep_period': hgcs_config.getint(name, 'sleep_period'),
+                'flush_period': hgcs_config.getint(name, 'flush_period'),
+                }
+            thread_list.append(class_obj(**param_dict))
+    # run threads
+    [ thr.start() for thr in thread_list ]
 
 
 if __name__ == '__main__':
-    testing()
-    # main()
+    # testing()
+    main()

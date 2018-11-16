@@ -1,0 +1,10 @@
+[LogRetriever]
+enable = true
+sleep_period = 300
+flush_period = 86400
+
+
+[SDFFetcher]
+enable = true
+sleep_period = 300
+flush_period = 86400
