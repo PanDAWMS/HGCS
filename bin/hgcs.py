@@ -448,7 +448,7 @@ def main():
     # command argparse
     oparser = argparse.ArgumentParser(prog='hgcs', add_help=True)
     subparsers = oparser.add_subparsers()
-    oparser.add_argument('-c', '--config', action='store', dest='conifg',
+    oparser.add_argument('-c', '--config', action='store', dest='config',
                             metavar='<file>', help='Configuration file')
     # start parsing
     if len(sys.argv) == 1:
@@ -463,24 +463,25 @@ def main():
         sys.exit(1)
     # load config
     try:
-        hgcs_config.load_config(config_file_path)
+        config = hgcs_config.ConfigClass(config_file_path)
     except IOError as e:
         print('IOError: {0}'.format(e))
         sys.exit(1)
     except Exception as e:
-        print('Cannon load conifg: {0}'.format(e))
+        print('Cannot load conifg: {0}'.format(e))
         sys.exit(1)
     # add threads of agents to run
     thread_list = []
     for name, class_obj in inspect.getmembers(sys.modules[__name__],
         lambda m: inspect.isclass(m) and m.__module__ == __name__):
-        if hgcs_config.has_section(name) \
-            and hgcs_config.getboolean(name, 'enable', fallback=False):
-            param_dict = {
-                'sleep_period': hgcs_config.getint(name, 'sleep_period'),
-                'flush_period': hgcs_config.getint(name, 'flush_period'),
-                }
-            thread_list.append(class_obj(**param_dict))
+        if hasattr(config, name):
+            section = getattr(config, name)
+            if getattr(section, 'enable', False):
+                param_dict = {
+                    'sleep_period': getattr(section, 'sleep_period'),
+                    'flush_period': getattr(section, 'flush_period'),
+                    }
+                thread_list.append(class_obj(**param_dict))
     # run threads
     [ thr.start() for thr in thread_list ]
 
