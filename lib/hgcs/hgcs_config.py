@@ -7,6 +7,7 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
+#===============================================================
 
 # dummy section class
 class _SectionClass(object):
