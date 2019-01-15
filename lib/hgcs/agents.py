@@ -232,10 +232,12 @@ class SDFFetcher(ThreadBase):
                     '&& isString(sdfPath) '
                 )
 
-    limit = 6000
-
-    def __init__(self):
+    def __init__(self, limit=6000):
         ThreadBase.__init__(self)
+        if limit is not None:
+            self.limit = limit
+        else:
+            self.limit = 6000
 
     def run(self):
         self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))

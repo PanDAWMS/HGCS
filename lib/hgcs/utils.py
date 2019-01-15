@@ -12,9 +12,13 @@ import htcondor
 
 #===============================================================
 
-def setupLogger(logger, pid=None, colored=True):
+def setupLogger(logger, pid=None, colored=True, to_file=None):
     logger.setLevel(logging.DEBUG)
-    hdlr = logging.StreamHandler()
+    if to_file is not None:
+        hdlr = logging.FileHandler(to_file)
+        colored = False
+    else:
+        hdlr = logging.StreamHandler()
     def emit_decorator(fn):
         def func(*args):
             if colored:
@@ -48,7 +52,6 @@ class ThreadBase(threading.Thread):
         threading.Thread.__init__(self, sleep_period=60, flush_period=86400)
         self.os_pid = os.getpid()
         self.logger = logging.getLogger(self.__class__.__name__)
-        setupLogger(self.logger, pid=self.get_pid, colored=False)
         self.sleep_period = sleep_period
         self.flush_period = flush_period
         self.startTimestamp = time.time()

@@ -1,0 +1,12 @@
+[Unit]
+Description=HGCS (Harvester Grid Condor Sidekick)
+After=multi-user.target
+Wants=condor.service
+
+[Service]
+Type=simple
+User=atlpan
+ExecStart=/opt/hgcs/bin/python /opt/harvester_grid-condor-server/bin/hgcs.py -c /opt/hgcs.cfg
+
+[Install]
+WantedBy=multi-user.target
