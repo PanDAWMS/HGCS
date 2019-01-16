@@ -13,7 +13,6 @@ import htcondor
 #===============================================================
 
 def setupLogger(logger, pid=None, colored=True, to_file=None):
-    logger.setLevel(logging.DEBUG)
     if to_file is not None:
         hdlr = logging.FileHandler(to_file)
         colored = False
@@ -48,8 +47,8 @@ def setupLogger(logger, pid=None, colored=True, to_file=None):
 #===============================================================
 
 class ThreadBase(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self, sleep_period=60, flush_period=86400)
+    def __init__(self, sleep_period=60, flush_period=86400, **kwarg):
+        threading.Thread.__init__(self)
         self.os_pid = os.getpid()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.sleep_period = sleep_period

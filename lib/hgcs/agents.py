@@ -40,8 +40,8 @@ class LogRetriever(ThreadBase):
                     '|| JobStatus == 3 ) '
                 )
 
-    def __init__(self, retrieve_mode='copy'):
-        ThreadBase.__init__(self)
+    def __init__(self, retrieve_mode='copy', **kwarg):
+        ThreadBase.__init__(self, **kwarg)
         self.retrieve_mode = retrieve_mode
 
     def run(self):
@@ -232,8 +232,8 @@ class SDFFetcher(ThreadBase):
                     '&& isString(sdfPath) '
                 )
 
-    def __init__(self, limit=6000):
-        ThreadBase.__init__(self)
+    def __init__(self, limit=6000, **kwarg):
+        ThreadBase.__init__(self, **kwarg)
         if limit is not None:
             self.limit = limit
         else:

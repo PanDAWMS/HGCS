@@ -25,6 +25,15 @@ from hgcs import utils    # noqa: E402
 
 #===============================================================
 
+LOG_LEVEL_MAP = {
+    'ERROR': logging.ERROR,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'DEBUG': logging.DEBUG,
+}
+
+#===============================================================
+
 def testing():
     """
     Test function
@@ -100,7 +109,7 @@ def main():
     # add threads of agents to run
     thread_list = []
     for name, class_obj in inspect.getmembers(agents,
-        lambda m: inspect.isclass(m) and m.__module__ == 'agents'):
+        lambda m: inspect.isclass(m) and m.__module__ == 'hgcs.agents'):
         if hasattr(config, name):
             section = getattr(config, name)
             if getattr(section, 'enable', False):
@@ -114,7 +123,8 @@ def main():
                                     pid=agent_instance.get_pid,
                                     colored=logger_format_colored,
                                     to_file=log_file)
-                thread_list.append()
+                agent_instance.logger.setLevel(LOG_LEVEL_MAP.get(log_level, logging.ERROR))
+                thread_list.append(agent_instance)
     # run threads
     for thr in thread_list:
         print('Start thread of agent {0}'.format(thr.__class__.__name__))
