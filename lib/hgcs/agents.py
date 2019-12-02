@@ -228,7 +228,7 @@ class SDFFetcher(ThreadBase):
         ]
 
     requirements = (
-                    'sdfCopied == 0 '
+                    '(isUndefined(sdfCopied) || sdfCopied == 0) '
                     '&& isString(sdfPath) '
                 )
 
