@@ -9,7 +9,7 @@ User=atlpan
 Group=zp
 LimitSTACK=1073741824
 Restart=on-abnormal
-ExecStart=/opt/hgcs_python/bin/python /opt/HGCS/bin/hgcs.py -c /opt/hgcs.cfg
+ExecStart=/opt/HGCS/bin/python /opt/HGCS/bin/hgcs.py -c /opt/hgcs.cfg
 
 [Install]
 WantedBy=multi-user.target
