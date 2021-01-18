@@ -1,0 +1,14 @@
+nocompress
+
+/var/log/hgcs/hgcs.log {
+    rotate 5
+    weekly
+    missingok
+    notifempty
+    sharedscripts
+    prerotate
+        /usr/bin/systemctl stop hgcs
+    postrotate
+        /usr/bin/systemctl restart hgcs
+    endscript
+}

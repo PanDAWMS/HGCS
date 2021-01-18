@@ -1,5 +1,5 @@
 [Master]
-log_file = /tmp/hgcs.log
+log_file = /var/log/hgcs/hgcs.log
 log_level = INFO
 
 
