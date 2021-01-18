@@ -1,8 +1,9 @@
 import sys
 from setuptools import setup, find_packages
-from . import pkg_info
 
 sys.path.insert(0, '.')
+
+import pkg_info  # noqa: E402
 
 
 setup(
