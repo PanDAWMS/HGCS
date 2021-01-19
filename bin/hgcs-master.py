@@ -12,12 +12,12 @@ import logging
 
 import htcondor
 
-# Get main directory path
-_MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
-
-# Setup lib path
-_LIB_PATH = os.path.join( _MAIN_DIR, 'lib' )
-sys.path.insert(0, _LIB_PATH)
+# # Get main directory path
+# _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
+#
+# # Setup lib path
+# _LIB_PATH = os.path.join( _MAIN_DIR, 'lib' )
+# sys.path.insert(0, _LIB_PATH)
 
 from hgcs import hgcs_config    # noqa: E402
 from hgcs import agents    # noqa: E402
@@ -46,7 +46,7 @@ def testing():
     #     '&& User == "atlpan@cern.ch" '
     #     '&& ClusterId == 18769 '
     # )
-    # for job in schedd.xquery(requirements=requirements):
+    # for job in schedd.xquery(constraint=requirements):
     #     print(job.get('ClusterId'), job.get('JobStatus'), job.get('SUBMIT_UserLog', None),  job.get('ffffff', None))
     # sleep_period = 300
     # thread_list = []
