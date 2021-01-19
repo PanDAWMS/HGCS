@@ -121,7 +121,7 @@ class LogRetriever(ThreadBase):
                     else:
                         self.logger.error('{0} . No more retry. Exit'.format(e))
                         return
-            for job in schedd.xquery(requirements=self.requirements,
+            for job in schedd.xquery(constraint=self.requirements,
                                         projection=self.projection):
                 job_id = get_condor_job_id(job)
                 if job_id in already_handled_job_id_set:
@@ -252,10 +252,10 @@ class CleanupDelayer(ThreadBase):
                     else:
                         self.logger.error('{0} . No more retry. Exit'.format(e))
                         return
-            # for job in schedd.xquery(requirements=self.requirements):
+            # for job in schedd.xquery(constraint=self.requirements):
             #     job_id = get_condor_job_id(job)
             #     self.logger.debug('to adjust LeaveJobInQueue of condor job {0}'.format(job_id))
-            job_id_list = [ get_condor_job_id(job) for job in schedd.xquery(requirements=self.requirements) ]
+            job_id_list = [ get_condor_job_id(job) for job in schedd.xquery(constraint=self.requirements) ]
             n_jobs = len(job_id_list)
             n_try = 3
             for i_try in range(1, n_try + 1):
@@ -320,7 +320,7 @@ class SDFFetcher(ThreadBase):
             already_sdf_copied_job_id_set = set()
             failed_and_to_skip_sdf_copied_job_id_set = set()
             try:
-                jobs_iter = schedd.xquery(requirements=self.requirements,
+                jobs_iter = schedd.xquery(constraint=self.requirements,
                                             projection=self.projection,
                                             limit=self.limit)
                 for job in jobs_iter:
@@ -422,7 +422,7 @@ def testing():
     #     '&& User == "atlpan@cern.ch" '
     #     '&& ClusterId == 18769 '
     # )
-    # for job in schedd.xquery(requirements=requirements):
+    # for job in schedd.xquery(constraint=requirements):
     #     print(job.get('ClusterId'), job.get('JobStatus'), job.get('SUBMIT_UserLog', None),  job.get('ffffff', None))
     sleep_period = 300
     thread_list = []

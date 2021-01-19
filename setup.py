@@ -41,6 +41,6 @@ setup(
                 ),
         ],
 
-    scripts=['bin/hgcs.py',
+    scripts=['bin/hgcs-master.py',
              ]
     )
