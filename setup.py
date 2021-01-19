@@ -7,7 +7,7 @@ import pkg_info  # noqa: E402
 
 
 setup(
-    name='HGCS',
+    name='hgcs',
     version=pkg_info.release_version,
     description='HGCS Package',
     long_description='''This package contains HGCS components''',
@@ -16,7 +16,8 @@ setup(
     author_email='atlas-adc-harvester-central-support@cern.ch',
     url='https://github.com/PanDAWMS/HGCS',
     python_requires='>=3.6',
-    packages=find_packages(),
+    packages=find_packages(where='lib'),
+    package_dir = {'': 'lib'},
     install_requires=[
                       'htcondor >= 8.9.0',
                       ],
