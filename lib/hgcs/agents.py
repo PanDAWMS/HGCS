@@ -42,6 +42,8 @@ class LogRetriever(ThreadBase):
 
     def __init__(self, retrieve_mode='copy', **kwarg):
         ThreadBase.__init__(self, **kwarg)
+        if self.flush_period is None:
+            self.flush_period = 86400
         self.retrieve_mode = retrieve_mode
 
     def run(self):
@@ -234,6 +236,8 @@ class SDFFetcher(ThreadBase):
 
     def __init__(self, limit=6000, **kwarg):
         ThreadBase.__init__(self, **kwarg)
+        if self.flush_period is None:
+            self.flush_period = 86400
         if limit is not None:
             self.limit = limit
         else:
@@ -352,3 +356,42 @@ class SDFFetcher(ThreadBase):
                 retVal = None
                 self.logger.error(e)
         return retVal
+
+
+class XJobCleaner(ThreadBase):
+
+    requirements_template = (
+                    'JobStatus =?= 3 '
+                    '&& time() - EnteredCurrentStatus >= {grace_period} '
+                )
+
+    def __init__(self, **kwarg):
+        ThreadBase.__init__(self, **kwarg)
+        if self.grace_period is None:
+            self.grace_period = 86400
+
+    def run(self):
+        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        while True:
+            self.logger.info('run starts')
+            n_try = 999
+            for i_try in range(1, n_try + 1):
+                try:
+                    schedd = MySchedd()
+                    break
+                except RuntimeError as e:
+                    if i_try < n_try:
+                        self.logger.warning('{0} . Retry...'.format(e))
+                        time.sleep(3)
+                    else:
+                        self.logger.error('{0} . No more retry. Exit'.format(e))
+                        return
+            try:
+                requirements = self.requirements_template.format(grace_period=int(self.grace_period))
+                act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)
+            except RuntimeError as e:
+                self.logger.error('Failed to remove-x jobs. Exit. RuntimeError: {0} '.format(e))
+            else:
+                self.logger.debug('act return : {act_ret}'.format(act_ret=str(act_ret)))
+            self.logger.info('run ends')
+            time.sleep(self.sleep_period)
