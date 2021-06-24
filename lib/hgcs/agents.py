@@ -40,10 +40,12 @@ class LogRetriever(ThreadBase):
                     '|| JobStatus == 3 ) '
                 )
 
-    def __init__(self, retrieve_mode='copy', **kwarg):
+    def __init__(self, flush_period = 86400, retrieve_mode='copy', **kwarg):
         ThreadBase.__init__(self, **kwarg)
-        if self.flush_period is None:
+        if flush_period is None:
             self.flush_period = 86400
+        else:
+            self.flush_period = flush_period
         self.retrieve_mode = retrieve_mode
 
     def run(self):
@@ -234,10 +236,12 @@ class SDFFetcher(ThreadBase):
                     '&& isString(sdfPath) '
                 )
 
-    def __init__(self, limit=6000, **kwarg):
+    def __init__(self, flush_period=86400, limit=6000, **kwarg):
         ThreadBase.__init__(self, **kwarg)
-        if self.flush_period is None:
+        if flush_period is None:
             self.flush_period = 86400
+        else:
+            self.flush_period = flush_period
         if limit is not None:
             self.limit = limit
         else:
@@ -365,10 +369,12 @@ class XJobCleaner(ThreadBase):
                     '&& time() - EnteredCurrentStatus >= {grace_period} '
                 )
 
-    def __init__(self, **kwarg):
+    def __init__(self, grace_period=86400, **kwarg):
         ThreadBase.__init__(self, **kwarg)
-        if self.grace_period is None:
+        if grace_period is None:
             self.grace_period = 86400
+        else:
+            self.grace_period = grace_period
 
     def run(self):
         self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
