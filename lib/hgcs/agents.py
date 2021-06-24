@@ -394,6 +394,7 @@ class XJobCleaner(ThreadBase):
                         return
             try:
                 requirements = self.requirements_template.format(grace_period=int(self.grace_period))
+                self.logger.debug('try to remove-x jobs')
                 act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)
             except RuntimeError as e:
                 self.logger.error('Failed to remove-x jobs. Exit. RuntimeError: {0} '.format(e))

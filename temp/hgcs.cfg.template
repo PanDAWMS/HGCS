@@ -15,5 +15,5 @@ limit = 6000
 
 [XJobCleaner]
 enable = true
-sleep_period = 60
+sleep_period = 3600
 grace_period = 14400
