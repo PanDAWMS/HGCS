@@ -12,6 +12,10 @@ import htcondor
 
 #===============================================================
 
+global_lock = threading.Lock()
+
+#===============================================================
+
 def setupLogger(logger, pid=None, colored=True, to_file=None):
     if to_file is not None:
         hdlr = logging.FileHandler(to_file)

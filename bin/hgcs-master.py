@@ -10,8 +10,6 @@ import re
 
 import logging
 
-import htcondor
-
 # # Get main directory path
 # _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
 #

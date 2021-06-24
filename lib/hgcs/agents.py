@@ -2,10 +2,12 @@ import os
 import sys
 import errno
 import shutil
-
 import time
 import re
 
+import htcondor
+
+#===============================================================
 
 # Get main directory path
 _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
@@ -14,7 +16,7 @@ _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
 _LIB_PATH = os.path.join( _MAIN_DIR, 'lib' )
 sys.path.insert(0, _LIB_PATH)
 
-from hgcs.utils import ThreadBase, MySchedd    # noqa: E402
+from hgcs.utils import ThreadBase, MySchedd, global_lock    # noqa: E402
 
 #===============================================================
 
@@ -395,10 +397,11 @@ class XJobCleaner(ThreadBase):
             try:
                 requirements = self.requirements_template.format(grace_period=int(self.grace_period))
                 self.logger.debug('try to remove-x jobs')
-                act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)
+                with global_lock:
+                    act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)
             except RuntimeError as e:
                 self.logger.error('Failed to remove-x jobs. Exit. RuntimeError: {0} '.format(e))
             else:
-                self.logger.debug('act return : {act_ret}'.format(act_ret=str(act_ret)))
+                self.logger.debug('act return : {act_ret}'.format(act_ret=str(dict(act_ret))))
             self.logger.info('run ends')
             time.sleep(self.sleep_period)
