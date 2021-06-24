@@ -10,8 +10,6 @@ import re
 
 import logging
 
-import htcondor
-
 # # Get main directory path
 # _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
 #
@@ -115,7 +113,8 @@ def main():
             if getattr(section, 'enable', False):
                 param_dict = {
                     'sleep_period': getattr(section, 'sleep_period'),
-                    'flush_period': getattr(section, 'flush_period'),
+                    'flush_period': getattr(section, 'flush_period', None),
+                    'grace_period': getattr(section, 'grace_period', None),
                     'limit': getattr(section, 'limit', None),
                     }
                 agent_instance = class_obj(**param_dict)

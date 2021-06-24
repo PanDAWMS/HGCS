@@ -55,11 +55,11 @@ class ConfigClass(object):
                         raise KeyError('{0} in the cfg is an undefined environment variable.'.format(envName))
                     tmpVal = os.environ[envName]
                 # convert string to bool/int
-                if tmpVal == 'True':
+                if tmpVal.lower() == 'true':
                     tmpVal = True
-                elif tmpVal == 'False':
+                elif tmpVal.lower() == 'false':
                     tmpVal = False
-                elif tmpVal == 'None':
+                elif tmpVal.lower() == 'none':
                     tmpVal = None
                 elif re.match('^\d+$', tmpVal):
                     tmpVal = int(tmpVal)

@@ -2,15 +2,18 @@
 log_file = /var/log/hgcs/hgcs.log
 log_level = INFO
 
-
 [LogRetriever]
 enable = true
 sleep_period = 300
 flush_period = 86400
-
 
 [SDFFetcher]
 enable = true
 sleep_period = 300
 flush_period = 86400
 limit = 6000
+
+[XJobCleaner]
+enable = true
+sleep_period = 3600
+grace_period = 14400

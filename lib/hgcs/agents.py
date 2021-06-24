@@ -2,10 +2,12 @@ import os
 import sys
 import errno
 import shutil
-
 import time
 import re
 
+import htcondor
+
+#===============================================================
 
 # Get main directory path
 _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
@@ -14,7 +16,7 @@ _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
 _LIB_PATH = os.path.join( _MAIN_DIR, 'lib' )
 sys.path.insert(0, _LIB_PATH)
 
-from hgcs.utils import ThreadBase, MySchedd    # noqa: E402
+from hgcs.utils import ThreadBase, MySchedd, global_lock    # noqa: E402
 
 #===============================================================
 
@@ -40,8 +42,12 @@ class LogRetriever(ThreadBase):
                     '|| JobStatus == 3 ) '
                 )
 
-    def __init__(self, retrieve_mode='copy', **kwarg):
+    def __init__(self, flush_period = 86400, retrieve_mode='copy', **kwarg):
         ThreadBase.__init__(self, **kwarg)
+        if flush_period is None:
+            self.flush_period = 86400
+        else:
+            self.flush_period = flush_period
         self.retrieve_mode = retrieve_mode
 
     def run(self):
@@ -232,8 +238,12 @@ class SDFFetcher(ThreadBase):
                     '&& isString(sdfPath) '
                 )
 
-    def __init__(self, limit=6000, **kwarg):
+    def __init__(self, flush_period=86400, limit=6000, **kwarg):
         ThreadBase.__init__(self, **kwarg)
+        if flush_period is None:
+            self.flush_period = 86400
+        else:
+            self.flush_period = flush_period
         if limit is not None:
             self.limit = limit
         else:
@@ -352,3 +362,46 @@ class SDFFetcher(ThreadBase):
                 retVal = None
                 self.logger.error(e)
         return retVal
+
+
+class XJobCleaner(ThreadBase):
+
+    requirements_template = (
+                    'JobStatus =?= 3 '
+                    '&& time() - EnteredCurrentStatus >= {grace_period} '
+                )
+
+    def __init__(self, grace_period=86400, **kwarg):
+        ThreadBase.__init__(self, **kwarg)
+        if grace_period is None:
+            self.grace_period = 86400
+        else:
+            self.grace_period = grace_period
+
+    def run(self):
+        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        while True:
+            self.logger.info('run starts')
+            n_try = 999
+            for i_try in range(1, n_try + 1):
+                try:
+                    schedd = MySchedd()
+                    break
+                except RuntimeError as e:
+                    if i_try < n_try:
+                        self.logger.warning('{0} . Retry...'.format(e))
+                        time.sleep(3)
+                    else:
+                        self.logger.error('{0} . No more retry. Exit'.format(e))
+                        return
+            try:
+                requirements = self.requirements_template.format(grace_period=int(self.grace_period))
+                self.logger.debug('try to remove-x jobs')
+                with global_lock:
+                    act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)
+            except RuntimeError as e:
+                self.logger.error('Failed to remove-x jobs. Exit. RuntimeError: {0} '.format(e))
+            else:
+                self.logger.debug('act return : {act_ret}'.format(act_ret=str(dict(act_ret))))
+            self.logger.info('run ends')
+            time.sleep(self.sleep_period)
