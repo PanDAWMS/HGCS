@@ -27,15 +27,15 @@ def setupLogger(logger, pid=None, colored=True):
         def func(*args):
             if colored:
                 levelno = args[0].levelno
-                if(levelno >= logging.CRITICAL):
+                if (levelno >= logging.CRITICAL):
                     color = '\033[35;1m'
-                elif(levelno >= logging.ERROR):
+                elif (levelno >= logging.ERROR):
                     color = '\033[31;1m'
-                elif(levelno >= logging.WARNING):
+                elif (levelno >= logging.WARNING):
                     color = '\033[33;1m'
-                elif(levelno >= logging.INFO):
+                elif (levelno >= logging.INFO):
                     color = '\033[32;1m'
-                elif(levelno >= logging.DEBUG):
+                elif (levelno >= logging.DEBUG):
                     color = '\033[36;1m'
                 else:
                     color = '\033[0m'
@@ -51,9 +51,9 @@ def setupLogger(logger, pid=None, colored=True):
 
 
 def get_condor_job_id(job):
-    ClusterId = job.get('ClusterId')
-    ProcId = job.get('ProcId')
-    return '{0}.{1}'.format(ClusterId, ProcId)
+    cluster_id = job.get('ClusterId')
+    proc_id = job.get('ProcId')
+    return '{0}.{1}'.format(cluster_id, proc_id)
 
 #===============================================================
 

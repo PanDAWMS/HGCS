@@ -1,13 +1,7 @@
 import os
 import sys
 import inspect
-import errno
-import shutil
 import argparse
-
-import time
-import re
-
 import logging
 
 # # Get main directory path
@@ -32,28 +26,6 @@ LOG_LEVEL_MAP = {
 
 #===============================================================
 
-def testing():
-    """
-    Test function
-    """
-    # schedd = MySchedd()
-    # for job in schedd.xquery(projection=['ClusterId', 'ProcId', 'JobStatus']):
-    #     print(repr(job))
-    # requirements = (
-    #     'JobStatus == 4 '
-    #     '&& User == "atlpan@cern.ch" '
-    #     '&& ClusterId == 18769 '
-    # )
-    # for job in schedd.xquery(constraint=requirements):
-    #     print(job.get('ClusterId'), job.get('JobStatus'), job.get('SUBMIT_UserLog', None),  job.get('ffffff', None))
-    # sleep_period = 300
-    # thread_list = []
-    # thread_list.append(LogRetriever(sleep_period=sleep_period))
-    # # thread_list.append(CleanupDelayer(sleep_period=sleep_period))
-    # thread_list.append(SDFFetcher(sleep_period=sleep_period))
-    # [ thr.start() for thr in thread_list ]
-    pass
-
 def main():
     """
     Main function
@@ -61,9 +33,11 @@ def main():
     # command argparse
     oparser = argparse.ArgumentParser(prog='hgcs', add_help=True)
     subparsers = oparser.add_subparsers()
-    oparser.add_argument('-c', '--config', action='store', dest='config',
-                            metavar='<file>', help='Configuration file')
-    oparser.add_argument('-F', '--foregroudlog', action='store_true', dest='foregroudlog',
+    oparser.add_argument('-c', '--config', action='store', 
+                            dest='config', metavar='<file>', 
+                            help='Configuration file')
+    oparser.add_argument('-F', '--foregroudlog', action='store_true', 
+                            dest='foregroudlog', 
                             help='Print logs to foregroud')
     # start parsing
     if len(sys.argv) == 1:
@@ -74,7 +48,7 @@ def main():
     if os.path.isfile(arguments.config):
         config_file_path = arguments.config
     else:
-        print('Invalid configuration file: {0}'.format(arguments.config))
+        print(f'Invalid configuration file: {arguments.config}')
         sys.exit(1)
     # defaults
     log_file = '/tmp/hgcs.log'
@@ -83,11 +57,11 @@ def main():
     # load config
     try:
         config = hgcs_config.ConfigClass(config_file_path)
-    except IOError as e:
-        print('IOError: {0}'.format(e))
+    except IOError as exc:
+        print(f'IOError: {exc}')
         sys.exit(1)
-    except Exception as e:
-        print('Cannot load conifg: {0}'.format(e))
+    except Exception as exc:
+        print(f'Cannot load conifg: {exc}')
         sys.exit(1)
     # handle master part of config
     try:
@@ -122,15 +96,15 @@ def main():
                                     pid=agent_instance.get_pid,
                                     colored=logger_format_colored,
                                     to_file=log_file)
-                agent_instance.logger.setLevel(LOG_LEVEL_MAP.get(log_level, logging.ERROR))
+                logging_log_level = LOG_LEVEL_MAP.get(log_level, logging.ERROR)
+                agent_instance.logger.setLevel(logging_log_level)
                 thread_list.append(agent_instance)
     # run threads
     for thr in thread_list:
-        print('Start thread of agent {0}'.format(thr.__class__.__name__))
+        print(f'Start thread of agent {thr.__class__.__name__}')
         thr.start()
 
 #===============================================================
 
 if __name__ == '__main__':
-    # testing()
     main()

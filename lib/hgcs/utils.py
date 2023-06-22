@@ -26,22 +26,21 @@ def setupLogger(logger, pid=None, colored=True, to_file=None):
         def func(*args):
             if colored:
                 levelno = args[0].levelno
-                if(levelno >= logging.CRITICAL):
+                if (levelno >= logging.CRITICAL):
                     color = '\033[35;1m'
-                elif(levelno >= logging.ERROR):
+                elif (levelno >= logging.ERROR):
                     color = '\033[31;1m'
-                elif(levelno >= logging.WARNING):
+                elif (levelno >= logging.WARNING):
                     color = '\033[33;1m'
-                elif(levelno >= logging.INFO):
+                elif (levelno >= logging.INFO):
                     color = '\033[32;1m'
-                elif(levelno >= logging.DEBUG):
+                elif (levelno >= logging.DEBUG):
                     color = '\033[36;1m'
                 else:
                     color = '\033[0m'
-                # formatter = logging.Formatter('{0}%(asctime)s %(levelname)s in %(filename)s:%(funcName)s:%(lineno)d [%(message)s]\033[0m'.format(color))
-                formatter = logging.Formatter('{0}[%(asctime)s %(levelname)s]({1})(%(name)s.%(funcName)s) %(message)s\033[0m'.format(color, pid))
+                formatter = logging.Formatter(f'{color}[%(asctime)s %(levelname)s]({pid})(%(name)s.%(funcName)s) %(message)s\033[0m')
             else:
-                formatter = logging.Formatter('%(asctime)s %(levelname)s]({0})(%(name)s.%(funcName)s) %(message)s'.format(pid))
+                formatter = logging.Formatter(f'%(asctime)s %(levelname)s]({pid})(%(name)s.%(funcName)s) %(message)s')
             hdlr.setFormatter(formatter)
             return fn(*args)
         return func
@@ -60,7 +59,7 @@ class ThreadBase(threading.Thread):
 
     @property
     def get_pid(self):
-        return '{0}-{1}'.format(self.os_pid, get_ident())
+        return f'{self.os_pid}-{get_ident()}'
 
 
 class MySchedd(htcondor.Schedd):
