@@ -63,7 +63,7 @@ class ThreadBase(threading.Thread):
         self.os_pid = os.getpid()
         self.logger = logging.getLogger(self.__class__.__name__)
         setupLogger(self.logger, pid=self.get_pid, colored=False)
-        self.startTimestamp = time.time()
+        self.start_timestamp = time.time()
 
     @property
     def get_pid(self):
@@ -100,7 +100,7 @@ class LogRetriever(ThreadBase):
         self.flush_period = flush_period
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug('startTimestamp: {0}'.format(self.start_timestamp))
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:
@@ -237,7 +237,7 @@ class CleanupDelayer(ThreadBase):
         self.delay_time = delay_time
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug('startTimestamp: {0}'.format(self.start_timestamp))
         while True:
             self.logger.info('run starts')
             n_try = 999
@@ -296,7 +296,7 @@ class SDFFetcher(ThreadBase):
         self.flush_period = flush_period
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug('startTimestamp: {0}'.format(self.start_timestamp))
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:

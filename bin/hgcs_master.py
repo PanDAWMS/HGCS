@@ -1,3 +1,7 @@
+"""
+main executable of HGCS
+"""
+
 import os
 import sys
 import inspect
@@ -28,16 +32,16 @@ LOG_LEVEL_MAP = {
 
 def main():
     """
-    Main function
+    main function
     """
     # command argparse
     oparser = argparse.ArgumentParser(prog='hgcs', add_help=True)
-    subparsers = oparser.add_subparsers()
-    oparser.add_argument('-c', '--config', action='store', 
-                            dest='config', metavar='<file>', 
+    # subparsers = oparser.add_subparsers()
+    oparser.add_argument('-c', '--config', action='store',
+                            dest='config', metavar='<file>',
                             help='Configuration file')
-    oparser.add_argument('-F', '--foregroudlog', action='store_true', 
-                            dest='foregroudlog', 
+    oparser.add_argument('-F', '--foregroudlog', action='store_true',
+                            dest='foregroudlog',
                             help='Print logs to foregroud')
     # start parsing
     if len(sys.argv) == 1:
@@ -92,7 +96,7 @@ def main():
                     'limit': getattr(section, 'limit', None),
                     }
                 agent_instance = class_obj(**param_dict)
-                utils.setupLogger(agent_instance.logger,
+                utils.setup_logger(agent_instance.logger,
                                     pid=agent_instance.get_pid,
                                     colored=logger_format_colored,
                                     to_file=log_file)

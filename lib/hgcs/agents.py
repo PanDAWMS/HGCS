@@ -1,5 +1,9 @@
+"""
+agents of HGCS
+"""
+
 import os
-import sys
+# import sys
 import errno
 import shutil
 import time
@@ -21,6 +25,9 @@ from hgcs.utils import ThreadBase, MySchedd, global_lock    # noqa: E402
 #===============================================================
 
 def get_condor_job_id(job):
+    """
+    get full condor job ID as ClusterId.ProcId
+    """
     cluster_id = job.get('ClusterId')
     proc_id = job.get('ProcId')
     return f'{cluster_id}.{proc_id}'
@@ -28,6 +35,9 @@ def get_condor_job_id(job):
 #===============================================================
 
 class LogRetriever(ThreadBase):
+    """
+    agent to retrieve or copy logs from external schedd host
+    """
 
     projection = [
             'ClusterId', 'ProcId', 'JobStatus',
@@ -51,7 +61,7 @@ class LogRetriever(ThreadBase):
         self.retrieve_mode = retrieve_mode
 
     def run(self):
-        self.logger.debug(f'startTimestamp: {self.startTimestamp}')
+        self.logger.debug(f'startTimestamp: {self.start_timestamp}')
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:
@@ -103,6 +113,9 @@ class LogRetriever(ThreadBase):
             time.sleep(self.sleep_period)
 
     def via_system(self, job, symlink_mode=False):
+        """
+        symlink or copy logs when source and destination are on the same host
+        """
         ret_val = True
         job_id = get_condor_job_id(job)
         src_dir = job.get('Iwd')
@@ -168,10 +181,17 @@ class LogRetriever(ThreadBase):
         return ret_val
 
     def via_condor_retrieve(self, job):
+        """
+        retrieve logs via condor_retrieve
+        Not implemented yet
+        """
         pass
 
 
 class CleanupDelayer(ThreadBase):
+    """
+    agent to adjust LeaveJobInQueue of jobs to delay cleanup of the jobs
+    """
 
     requirements = (
         'SUBMIT_UserLog is undefined '
@@ -187,7 +207,7 @@ class CleanupDelayer(ThreadBase):
         self.delay_time = delay_time
 
     def run(self):
-        self.logger.debug(f'startTimestamp: {self.startTimestamp}')
+        self.logger.debug(f'startTimestamp: {self.start_timestamp}')
         while True:
             self.logger.info('run starts')
             n_try = 999
@@ -202,13 +222,15 @@ class CleanupDelayer(ThreadBase):
                     else:
                         self.logger.error(f'{exc} . No more retry. Exit')
                         return
-            job_id_list = [ get_condor_job_id(job) for job in schedd.xquery(constraint=self.requirements) ]
+            job_id_list = [ get_condor_job_id(job) \
+                            for job in schedd.xquery(constraint=self.requirements) ]
             n_jobs = len(job_id_list)
             n_try = 3
             for i_try in range(1, n_try + 1):
                 try:
                     schedd.edit(job_id_list, 'LeaveJobInQueue',
-                                    self.ad_LeaveJobInQueue_template.format(delay_time=self.delay_time))
+                                self.ad_LeaveJobInQueue_template.format(
+                                    delay_time=self.delay_time))
                 except RuntimeError:
                     if i_try < n_try:
                         self.logger.warning(f'failed to edit {n_jobs} jobs . Retry: {i_try}')
@@ -223,6 +245,9 @@ class CleanupDelayer(ThreadBase):
 
 
 class SDFFetcher(ThreadBase):
+    """
+    agent to copy submit description file (SDF) the job to the same directory of job logs
+    """
 
     projection = [
             'ClusterId', 'ProcId', 'JobStatus',
@@ -247,7 +272,7 @@ class SDFFetcher(ThreadBase):
             self.limit = 6000
 
     def run(self):
-        self.logger.debug(f'startTimestamp: {self.startTimestamp}')
+        self.logger.debug(f'startTimestamp: {self.start_timestamp}')
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:
@@ -319,6 +344,9 @@ class SDFFetcher(ThreadBase):
             time.sleep(self.sleep_period)
 
     def via_system(self, job):
+        """
+        copy submit description file when source and destination are on the same host
+        """
         ret_val = True
         job_id = get_condor_job_id(job)
         src_path = job.get('sdfPath')
@@ -362,6 +390,9 @@ class SDFFetcher(ThreadBase):
 
 
 class XJobCleaner(ThreadBase):
+    """
+    agent to clean up jobs in removed status in the queue with forcex
+    """
 
     requirements_template = (
                     'JobStatus =?= 3 '
@@ -376,7 +407,7 @@ class XJobCleaner(ThreadBase):
             self.grace_period = grace_period
 
     def run(self):
-        self.logger.debug(f'startTimestamp: {self.startTimestamp}')
+        self.logger.debug(f'startTimestamp: {self.start_timestamp}')
         while True:
             self.logger.info('run starts')
             n_try = 999

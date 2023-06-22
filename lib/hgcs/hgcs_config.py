@@ -1,3 +1,7 @@
+"""
+configuration parser of HGCS
+"""
+
 import os
 import sys
 import re
@@ -9,14 +13,17 @@ except ImportError:
 
 #===============================================================
 
-# dummy section class
-class _SectionClass(object):
+class _SectionClass():
+    """
+    dummy class for config section
+    """
     def __init__(self):
         pass
 
-
-# config class
-class ConfigClass(object):
+class ConfigClass():
+    """
+    class for HGCS configurations
+    """
     def __init__(self, config_file=None):
         # get ConfigParser
         tmp_conf = configparser.ConfigParser()
@@ -48,7 +55,7 @@ class ConfigClass(object):
             for tmp_key, tmp_val in tmp_dict.items():
                 # use env vars
                 if tmp_val.startswith('$'):
-                    tmp_match = re.search('\$\{*([^\}]+)\}*', tmp_val)
+                    tmp_match = re.search(r'\$\{*([^\}]+)\}*', tmp_val)
                     env_name = tmp_match.group(1)
                     if env_name not in os.environ:
                         raise KeyError(f'{env_name} in config is undefined env variable')
@@ -60,7 +67,7 @@ class ConfigClass(object):
                     tmp_val = False
                 elif tmp_val.lower() == 'none':
                     tmp_val = None
-                elif re.match('^\d+$', tmp_val):
+                elif re.match(r'^\d+$', tmp_val):
                     tmp_val = int(tmp_val)
                 elif '\n' in tmp_val:
                     tmp_val = tmp_val.split('\n')
