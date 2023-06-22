@@ -23,4 +23,4 @@ jobs:
         pip install --upgrade htcondor
     - name: Analysing the code with pylint
       run: |
-        pylint --extension-pkg-allow-list=htcondor $(git ls-files 'bin/*.py' 'lib/*.py')
+        pylint --fail-under=8.0 --extension-pkg-allow-list=htcondor $(git ls-files 'bin/*.py' 'lib/*.py')
