@@ -294,7 +294,7 @@ class SDFFetcher(ThreadBase):
                         self.logger.error(f'{exc} . No more retry. Exit')
                         return
             already_sdf_copied_job_id_set = set()
-            failed_and_to_skip_sdf_copied_job_id_set = set()
+            to_skip_sdf_copied_job_id_set = set()
             try:
                 jobs_iter = schedd.xquery(constraint=self.requirements,
                                             projection=self.projection,
@@ -308,7 +308,7 @@ class SDFFetcher(ThreadBase):
                     if ret_val is True:
                         already_sdf_copied_job_id_set.add(job_id)
                     elif ret_val is False:
-                        failed_and_to_skip_sdf_copied_job_id_set.add(job_id)
+                        to_skip_sdf_copied_job_id_set.add(job_id)
             except RuntimeError as exc:
                 self.logger.error(f'Failed to query jobs. Exit. RuntimeError: {exc} ')
             else:
@@ -329,7 +329,7 @@ class SDFFetcher(ThreadBase):
                 n_try = 3
                 for i_try in range(1, n_try + 1):
                     try:
-                        schedd.edit(list(failed_and_to_skip_sdf_copied_job_id_set), 'sdfCopied', '2')
+                        schedd.edit(list(to_skip_sdf_copied_job_id_set), 'sdfCopied', '2')
                     except RuntimeError:
                         if i_try < n_try:
                             self.logger.warning(f'failed to edit job {job_id} . Retry: {i_try}')
@@ -337,8 +337,8 @@ class SDFFetcher(ThreadBase):
                         else:
                             self.logger.warning(f'failed to edit job {job_id} . Skipped...')
                     else:
-                        already_handled_job_id_set.update(failed_and_to_skip_sdf_copied_job_id_set)
-                        failed_and_to_skip_sdf_copied_job_id_set.clear()
+                        already_handled_job_id_set.update(to_skip_sdf_copied_job_id_set)
+                        to_skip_sdf_copied_job_id_set.clear()
                         break
             self.logger.info('run ends')
             time.sleep(self.sleep_period)
@@ -423,7 +423,8 @@ class XJobCleaner(ThreadBase):
                         self.logger.error(f'{exc} . No more retry. Exit')
                         return
             try:
-                requirements = self.requirements_template.format(grace_period=int(self.grace_period))
+                requirements = self.requirements_template.format(
+                                        grace_period=int(self.grace_period))
                 self.logger.debug('try to remove-x jobs')
                 with global_lock:
                     act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)

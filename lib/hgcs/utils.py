@@ -31,6 +31,8 @@ def setup_logger(logger, pid=None, colored=True, to_file=None):
         hdlr = logging.StreamHandler()
     def emit_decorator(orig_func):
         def func(*args):
+            _fstr = f'[%(asctime)s %(levelname)s]({pid})(%(name)s.%(funcName)s) %(message)s'
+            format_str = _fstr
             if colored:
                 levelno = args[0].levelno
                 if levelno >= logging.CRITICAL:
@@ -45,9 +47,8 @@ def setup_logger(logger, pid=None, colored=True, to_file=None):
                     color = '\033[36;1m'
                 else:
                     color = '\033[0m'
-                formatter = logging.Formatter(f'{color}[%(asctime)s %(levelname)s]({pid})(%(name)s.%(funcName)s) %(message)s\033[0m')
-            else:
-                formatter = logging.Formatter(f'%(asctime)s %(levelname)s]({pid})(%(name)s.%(funcName)s) %(message)s')
+                format_str = f'{color}{_fstr}\033[0m'
+            formatter = logging.Formatter(format_str)
             hdlr.setFormatter(formatter)
             return orig_func(*args)
         return func
