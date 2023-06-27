@@ -1,3 +1,7 @@
+"""
+configuration parser of HGCS
+"""
+
 import os
 import sys
 import re
@@ -9,63 +13,65 @@ except ImportError:
 
 #===============================================================
 
-# dummy section class
-class _SectionClass(object):
+class _SectionClass():
+    """
+    dummy class for config section
+    """
     def __init__(self):
         pass
 
-
-# config class
-class ConfigClass(object):
+class ConfigClass():
+    """
+    class for HGCS configurations
+    """
     def __init__(self, config_file=None):
         # get ConfigParser
-        tmpConf = configparser.ConfigParser()
+        tmp_conf = configparser.ConfigParser()
         # default and env variable for config file path
-        configPath_specified = os.path.normpath(config_file)
-        configEnvVar = 'HGCS_CONFIG_PATH'
-        configPath_default = '/etc/hgcs.cfg'
-        if configPath_specified:
-            configPath = configPath_specified
-        elif configEnvVar in os.environ:
-            configPath = os.path.normpath(os.environ[configEnvVar])
+        config_path_specified = os.path.normpath(config_file)
+        config_env_var = 'HGCS_CONFIG_PATH'
+        config_path_default = '/etc/hgcs.cfg'
+        if config_path_specified:
+            config_path = config_path_specified
+        elif config_env_var in os.environ:
+            config_path = os.path.normpath(os.environ[config_env_var])
         else:
-            configPath = configPath_default
+            config_path = config_path_default
         # read
         try:
-            tmpConf.read(configPath)
-        except Exception as e:
-            print('Failed to read config file from {0}: {1}'.format(configPath, e))
-            raise e
-            return False
+            tmp_conf.read(config_path)
+        except Exception as exc:
+            print(f'Failed to read config file from {config_path}: {exc}')
+            raise exc
         # loop over all sections
-        for tmpSection in tmpConf.sections():
+        for tmp_section in tmp_conf.sections():
             # read section
-            tmpDict = tmpConf[tmpSection]
+            tmp_dict = tmp_conf[tmp_section]
             # make section class
-            tmpSelf = _SectionClass()
+            tmp_self = _SectionClass()
             # update module dict
-            setattr(self, tmpSection, tmpSelf)
+            setattr(self, tmp_section, tmp_self)
             # expand all values
-            for tmpKey, tmpVal in tmpDict.items():
+            for tmp_key, tmp_val in tmp_dict.items():
                 # use env vars
-                if tmpVal.startswith('$'):
-                    tmpMatch = re.search('\$\{*([^\}]+)\}*', tmpVal)
-                    envName = tmpMatch.group(1)
-                    if envName not in os.environ:
-                        raise KeyError('{0} in the cfg is an undefined environment variable.'.format(envName))
-                    tmpVal = os.environ[envName]
+                if tmp_val.startswith('$'):
+                    tmp_match = re.search(r'\$\{*([^\}]+)\}*', tmp_val)
+                    env_name = tmp_match.group(1)
+                    if env_name not in os.environ:
+                        raise KeyError(f'{env_name} in config is undefined env variable')
+                    tmp_val = os.environ[env_name]
                 # convert string to bool/int
-                if tmpVal.lower() == 'true':
-                    tmpVal = True
-                elif tmpVal.lower() == 'false':
-                    tmpVal = False
-                elif tmpVal.lower() == 'none':
-                    tmpVal = None
-                elif re.match('^\d+$', tmpVal):
-                    tmpVal = int(tmpVal)
-                elif '\n' in tmpVal:
-                    tmpVal = tmpVal.split('\n')
+                if tmp_val.lower() == 'true':
+                    tmp_val = True
+                elif tmp_val.lower() == 'false':
+                    tmp_val = False
+                elif tmp_val.lower() == 'none':
+                    tmp_val = None
+                elif re.match(r'^\d+$', tmp_val):
+                    tmp_val = int(tmp_val)
+                elif '\n' in tmp_val:
+                    tmp_val = tmp_val.split('\n')
                     # remove empty
-                    tmpVal = [x.strip() for x in tmpVal if x.strip()]
+                    tmp_val = [x.strip() for x in tmp_val if x.strip()]
                 # update dict
-                setattr(tmpSelf, tmpKey, tmpVal)
+                setattr(tmp_self, tmp_key, tmp_val)

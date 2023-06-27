@@ -19,7 +19,7 @@ setup(
     packages=find_packages(where='lib'),
     package_dir = {'': 'lib'},
     install_requires=[
-                      'htcondor >= 8.9.0',
+                      'htcondor >= 9.6.0',
                       ],
 
     # optional pip dependencies
@@ -41,6 +41,6 @@ setup(
                 ),
         ],
 
-    scripts=['bin/hgcs-master.py',
+    scripts=['bin/hgcs_master.py',
              ]
     )

@@ -1,3 +1,7 @@
+"""
+common utilities of HGCS
+"""
+
 import os
 import time
 import logging
@@ -16,34 +20,37 @@ global_lock = threading.Lock()
 
 #===============================================================
 
-def setupLogger(logger, pid=None, colored=True, to_file=None):
+def setup_logger(logger, pid=None, colored=True, to_file=None):
+    """
+    set up the logger
+    """
     if to_file is not None:
         hdlr = logging.FileHandler(to_file)
         colored = False
     else:
         hdlr = logging.StreamHandler()
-    def emit_decorator(fn):
+    def emit_decorator(orig_func):
         def func(*args):
+            _fstr = f'[%(asctime)s %(levelname)s]({pid})(%(name)s.%(funcName)s) %(message)s'
+            format_str = _fstr
             if colored:
                 levelno = args[0].levelno
-                if(levelno >= logging.CRITICAL):
+                if levelno >= logging.CRITICAL:
                     color = '\033[35;1m'
-                elif(levelno >= logging.ERROR):
+                elif levelno >= logging.ERROR:
                     color = '\033[31;1m'
-                elif(levelno >= logging.WARNING):
+                elif levelno >= logging.WARNING:
                     color = '\033[33;1m'
-                elif(levelno >= logging.INFO):
+                elif levelno >= logging.INFO:
                     color = '\033[32;1m'
-                elif(levelno >= logging.DEBUG):
+                elif levelno >= logging.DEBUG:
                     color = '\033[36;1m'
                 else:
                     color = '\033[0m'
-                # formatter = logging.Formatter('{0}%(asctime)s %(levelname)s in %(filename)s:%(funcName)s:%(lineno)d [%(message)s]\033[0m'.format(color))
-                formatter = logging.Formatter('{0}[%(asctime)s %(levelname)s]({1})(%(name)s.%(funcName)s) %(message)s\033[0m'.format(color, pid))
-            else:
-                formatter = logging.Formatter('%(asctime)s %(levelname)s]({0})(%(name)s.%(funcName)s) %(message)s'.format(pid))
+                format_str = f'{color}{_fstr}\033[0m'
+            formatter = logging.Formatter(format_str)
             hdlr.setFormatter(formatter)
-            return fn(*args)
+            return orig_func(*args)
         return func
     hdlr.emit = emit_decorator(hdlr.emit)
     logger.addHandler(hdlr)
@@ -51,20 +58,38 @@ def setupLogger(logger, pid=None, colored=True, to_file=None):
 #===============================================================
 
 class ThreadBase(threading.Thread):
+    """
+    base class of thread to run HGCS agents
+    """
+
     def __init__(self, sleep_period=60, **kwarg):
         threading.Thread.__init__(self)
         self.os_pid = os.getpid()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.sleep_period = sleep_period
-        self.startTimestamp = time.time()
+        self.start_timestamp = time.time()
 
     @property
     def get_pid(self):
-        return '{0}-{1}'.format(self.os_pid, get_ident())
+        """
+        get unique thread identifier including process ID (from OS) and thread ID (from python)
+        """
+        return f'{self.os_pid}-{get_ident()}'
+
+    def run(self):
+        """
+        run the agent
+        """
+        pass
 
 
 class MySchedd(htcondor.Schedd):
+    """
+    Schedd class in singleton
+    """
+
     __instance = None
+
     def __new__(cls, *args, **kwargs):
         if not isinstance(cls.__instance, cls):
             cls.__instance = super(MySchedd, cls).__new__(cls, *args, **kwargs)

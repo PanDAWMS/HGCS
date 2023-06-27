@@ -27,15 +27,15 @@ def setupLogger(logger, pid=None, colored=True):
         def func(*args):
             if colored:
                 levelno = args[0].levelno
-                if(levelno >= logging.CRITICAL):
+                if (levelno >= logging.CRITICAL):
                     color = '\033[35;1m'
-                elif(levelno >= logging.ERROR):
+                elif (levelno >= logging.ERROR):
                     color = '\033[31;1m'
-                elif(levelno >= logging.WARNING):
+                elif (levelno >= logging.WARNING):
                     color = '\033[33;1m'
-                elif(levelno >= logging.INFO):
+                elif (levelno >= logging.INFO):
                     color = '\033[32;1m'
-                elif(levelno >= logging.DEBUG):
+                elif (levelno >= logging.DEBUG):
                     color = '\033[36;1m'
                 else:
                     color = '\033[0m'
@@ -51,9 +51,9 @@ def setupLogger(logger, pid=None, colored=True):
 
 
 def get_condor_job_id(job):
-    ClusterId = job.get('ClusterId')
-    ProcId = job.get('ProcId')
-    return '{0}.{1}'.format(ClusterId, ProcId)
+    cluster_id = job.get('ClusterId')
+    proc_id = job.get('ProcId')
+    return '{0}.{1}'.format(cluster_id, proc_id)
 
 #===============================================================
 
@@ -63,7 +63,7 @@ class ThreadBase(threading.Thread):
         self.os_pid = os.getpid()
         self.logger = logging.getLogger(self.__class__.__name__)
         setupLogger(self.logger, pid=self.get_pid, colored=False)
-        self.startTimestamp = time.time()
+        self.start_timestamp = time.time()
 
     @property
     def get_pid(self):
@@ -100,7 +100,7 @@ class LogRetriever(ThreadBase):
         self.flush_period = flush_period
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug('startTimestamp: {0}'.format(self.start_timestamp))
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:
@@ -237,7 +237,7 @@ class CleanupDelayer(ThreadBase):
         self.delay_time = delay_time
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug('startTimestamp: {0}'.format(self.start_timestamp))
         while True:
             self.logger.info('run starts')
             n_try = 999
@@ -296,7 +296,7 @@ class SDFFetcher(ThreadBase):
         self.flush_period = flush_period
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug('startTimestamp: {0}'.format(self.start_timestamp))
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:

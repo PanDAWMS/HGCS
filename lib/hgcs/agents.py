@@ -1,5 +1,9 @@
+"""
+agents of HGCS
+"""
+
 import os
-import sys
+# import sys
 import errno
 import shutil
 import time
@@ -9,25 +13,31 @@ import htcondor
 
 #===============================================================
 
-# Get main directory path
-_MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
+# # Get main directory path
+# _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
 
-# Setup lib path
-_LIB_PATH = os.path.join( _MAIN_DIR, 'lib' )
-sys.path.insert(0, _LIB_PATH)
+# # Setup lib path
+# _LIB_PATH = os.path.join( _MAIN_DIR, 'lib' )
+# sys.path.insert(0, _LIB_PATH)
 
 from hgcs.utils import ThreadBase, MySchedd, global_lock    # noqa: E402
 
 #===============================================================
 
 def get_condor_job_id(job):
-    ClusterId = job.get('ClusterId')
-    ProcId = job.get('ProcId')
-    return '{0}.{1}'.format(ClusterId, ProcId)
+    """
+    get full condor job ID as ClusterId.ProcId
+    """
+    cluster_id = job.get('ClusterId')
+    proc_id = job.get('ProcId')
+    return f'{cluster_id}.{proc_id}'
 
 #===============================================================
 
 class LogRetriever(ThreadBase):
+    """
+    agent to retrieve or copy logs from external schedd host
+    """
 
     projection = [
             'ClusterId', 'ProcId', 'JobStatus',
@@ -51,7 +61,7 @@ class LogRetriever(ThreadBase):
         self.retrieve_mode = retrieve_mode
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug(f'startTimestamp: {self.start_timestamp}')
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:
@@ -65,24 +75,24 @@ class LogRetriever(ThreadBase):
                 try:
                     schedd = MySchedd()
                     break
-                except RuntimeError as e:
+                except RuntimeError as exc:
                     if i_try < n_try:
-                        self.logger.warning('{0} . Retry...'.format(e))
+                        self.logger.warning(f'{exc} . Retry...')
                         time.sleep(3)
                     else:
-                        self.logger.error('{0} . No more retry. Exit'.format(e))
+                        self.logger.error(f'{exc} . No more retry. Exit')
                         return
             for job in schedd.xquery(constraint=self.requirements,
                                         projection=self.projection):
                 job_id = get_condor_job_id(job)
                 if job_id in already_handled_job_id_set:
                     continue
-                self.logger.debug('to retrieve for condor job {0}'.format(job_id))
+                self.logger.debug(f'to retrieve for condor job {job_id}')
                 if self.retrieve_mode == 'symlink':
                     self.via_system(job, symlink_mode=True)
                 elif self.retrieve_mode == 'copy':
-                    retVal = self.via_system(job)
-                    if retVal:
+                    ret_val = self.via_system(job)
+                    if ret_val:
                         already_handled_job_id_set.add(job_id)
                 elif self.retrieve_mode == 'condor':
                     self.via_condor_retrieve(job)
@@ -92,10 +102,10 @@ class LogRetriever(ThreadBase):
                     schedd.edit(list(already_handled_job_id_set), 'LeaveJobInQueue', 'false')
                 except RuntimeError:
                     if i_try < n_try:
-                        self.logger.warning('failed to edit job {0} . Retry: {1}'.format(job_id, i_try))
+                        self.logger.warning(f'failed to edit job {job_id} . Retry: {i_try}')
                         time.sleep(1)
                     else:
-                        self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
+                        self.logger.warning(f'failed to edit job {job_id} . Skipped...')
                 else:
                     already_handled_job_id_set.clear()
                     break
@@ -103,7 +113,10 @@ class LogRetriever(ThreadBase):
             time.sleep(self.sleep_period)
 
     def via_system(self, job, symlink_mode=False):
-        retVal = True
+        """
+        symlink or copy logs when source and destination are on the same host
+        """
+        ret_val = True
         job_id = get_condor_job_id(job)
         src_dir = job.get('Iwd')
         src_err_name = job.get('Err')
@@ -117,15 +130,15 @@ class LogRetriever(ThreadBase):
         dest_log = job.get('SUBMIT_UserLog')
         transfer_remap_list = str(job.get('SUBMIT_TransferOutputRemaps')).split(';')
         if not dest_log:
-            self.logger.debug('{0} has no attribute of spool. Skipped...'.format(job_id))
+            self.logger.debug(f'{job_id} has no attribute of spool. Skipped...')
             return True
         for _m in transfer_remap_list:
-            match = re.search('([a-zA-Z0-9_.\-]+)=([a-zA-Z0-9_.\-/]+)', _m)
+            match = re.search(r'([a-zA-Z0-9_.\-]+)=([a-zA-Z0-9_.\-/]+)', _m)
             if match:
                 name = match.group(1)
                 dest_path = os.path.normpath(match.group(2))
                 if name == src_log_name:
-                    dest_log = osdest_path
+                    dest_log = dest_path
                 elif name == src_out_name:
                     dest_out = dest_path
                 elif name == src_err_name:
@@ -134,44 +147,51 @@ class LogRetriever(ThreadBase):
             if not os.path.isfile(src_path) or os.path.islink(src_path):
                 if job.get('JobStatus') != 4:
                     continue
-                retVal = False
-                self.logger.error('{0} is not a regular file. Skipped...'.format(src_path))
+                ret_val = False
+                self.logger.error(f'{src_path} is not a regular file. Skipped...')
                 continue
             if not dest_path:
-                retVal = False
-                self.logger.error('no destination path for {0} . Skipped...'.format(src_path))
+                ret_val = False
+                self.logger.error(f'no destination path for {src_path} . Skipped...')
                 continue
             try:
                 if symlink_mode:
                     os.symlink(src_path, dest_path)
                     if os.path.islink(dest_path):
-                        self.logger.debug('{0} symlink made'.format(dest_path))
+                        self.logger.debug(f'{dest_path} symlink made')
                     else:
-                        retVal = False
-                        self.logger.error('{0} made but not found'.format(dest_path))
+                        ret_val = False
+                        self.logger.error(f'{dest_path} made but not found')
                 else:
                     shutil.copy2(src_path, dest_path)
                     if os.path.isfile(dest_path):
-                        self.logger.debug('{0} copy made'.format(dest_path))
+                        self.logger.debug(f'{dest_path} copy made')
                     else:
-                        retVal = False
-                        self.logger.error('{0} made but not found'.format(dest_path))
-            except OSError as e:
-                if e.errno == errno.EEXIST:
-                    self.logger.debug('{0} file already exists. Skipped...'.format(dest_path))
+                        ret_val = False
+                        self.logger.error(f'{dest_path} made but not found')
+            except OSError as exc:
+                if exc.errno == errno.EEXIST:
+                    self.logger.debug(f'{dest_path} file already exists. Skipped...')
                 else:
-                    retVal = False
-                    self.logger.error(e)
-            except Exception as e:
-                retVal = False
-                self.logger.error(e)
-        return retVal
+                    ret_val = False
+                    self.logger.error(exc)
+            except Exception as exc:
+                ret_val = False
+                self.logger.error(exc)
+        return ret_val
 
     def via_condor_retrieve(self, job):
+        """
+        retrieve logs via condor_retrieve
+        Not implemented yet
+        """
         pass
 
 
 class CleanupDelayer(ThreadBase):
+    """
+    agent to adjust LeaveJobInQueue of jobs to delay cleanup of the jobs
+    """
 
     requirements = (
         'SUBMIT_UserLog is undefined '
@@ -187,7 +207,7 @@ class CleanupDelayer(ThreadBase):
         self.delay_time = delay_time
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug(f'startTimestamp: {self.start_timestamp}')
         while True:
             self.logger.info('run starts')
             n_try = 999
@@ -195,37 +215,39 @@ class CleanupDelayer(ThreadBase):
                 try:
                     schedd = MySchedd()
                     break
-                except RuntimeError as e:
+                except RuntimeError as exc:
                     if i_try < n_try:
-                        self.logger.warning('{0} . Retry...'.format(e))
+                        self.logger.warning(f'{exc} . Retry...')
                         time.sleep(3)
                     else:
-                        self.logger.error('{0} . No more retry. Exit'.format(e))
+                        self.logger.error(f'{exc} . No more retry. Exit')
                         return
-            # for job in schedd.xquery(constraint=self.requirements):
-            #     job_id = get_condor_job_id(job)
-            #     self.logger.debug('to adjust LeaveJobInQueue of condor job {0}'.format(job_id))
-            job_id_list = [ get_condor_job_id(job) for job in schedd.xquery(constraint=self.requirements) ]
+            job_id_list = [ get_condor_job_id(job) \
+                            for job in schedd.xquery(constraint=self.requirements) ]
             n_jobs = len(job_id_list)
             n_try = 3
             for i_try in range(1, n_try + 1):
                 try:
                     schedd.edit(job_id_list, 'LeaveJobInQueue',
-                                    self.ad_LeaveJobInQueue_template.format(delay_time=self.delay_time))
+                                self.ad_LeaveJobInQueue_template.format(
+                                    delay_time=self.delay_time))
                 except RuntimeError:
                     if i_try < n_try:
-                        self.logger.warning('failed to edit {0} jobs . Retry: {1}'.format(n_jobs, i_try))
+                        self.logger.warning(f'failed to edit {n_jobs} jobs . Retry: {i_try}')
                         time.sleep(1)
                     else:
-                        self.logger.warning('failed to edit {0} jobs . Skipped...'.format(n_jobs))
+                        self.logger.warning(f'failed to edit {n_jobs} jobs . Skipped...')
                 else:
-                    self.logger.debug('adjusted LeaveJobInQueue of {0} condor jobs '.format(n_jobs))
+                    self.logger.debug(f'adjusted LeaveJobInQueue of {n_jobs} condor jobs ')
                     break
             self.logger.info('run ends')
             time.sleep(self.sleep_period)
 
 
 class SDFFetcher(ThreadBase):
+    """
+    agent to copy submit description file (SDF) the job to the same directory of job logs
+    """
 
     projection = [
             'ClusterId', 'ProcId', 'JobStatus',
@@ -250,7 +272,7 @@ class SDFFetcher(ThreadBase):
             self.limit = 6000
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug(f'startTimestamp: {self.start_timestamp}')
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
         while True:
@@ -264,15 +286,15 @@ class SDFFetcher(ThreadBase):
                 try:
                     schedd = MySchedd()
                     break
-                except RuntimeError as e:
+                except RuntimeError as exc:
                     if i_try < n_try:
-                        self.logger.warning('{0} . Retry...'.format(e))
+                        self.logger.warning(f'{exc} . Retry...')
                         time.sleep(3)
                     else:
-                        self.logger.error('{0} . No more retry. Exit'.format(e))
+                        self.logger.error(f'{exc} . No more retry. Exit')
                         return
             already_sdf_copied_job_id_set = set()
-            failed_and_to_skip_sdf_copied_job_id_set = set()
+            to_skip_sdf_copied_job_id_set = set()
             try:
                 jobs_iter = schedd.xquery(constraint=self.requirements,
                                             projection=self.projection,
@@ -281,14 +303,14 @@ class SDFFetcher(ThreadBase):
                     job_id = get_condor_job_id(job)
                     if job_id in already_handled_job_id_set:
                         continue
-                    self.logger.debug('to copy sdf for condor job {0}'.format(job_id))
-                    retVal = self.via_system(job)
-                    if retVal is True:
+                    self.logger.debug(f'to copy sdf for condor job {job_id}')
+                    ret_val = self.via_system(job)
+                    if ret_val is True:
                         already_sdf_copied_job_id_set.add(job_id)
-                    elif retVal is False:
-                        failed_and_to_skip_sdf_copied_job_id_set.add(job_id)
-            except RuntimeError as e:
-                self.logger.error('Failed to query jobs. Exit. RuntimeError: {0} '.format(e))
+                    elif ret_val is False:
+                        to_skip_sdf_copied_job_id_set.add(job_id)
+            except RuntimeError as exc:
+                self.logger.error(f'Failed to query jobs. Exit. RuntimeError: {exc} ')
             else:
                 n_try = 3
                 for i_try in range(1, n_try + 1):
@@ -296,10 +318,10 @@ class SDFFetcher(ThreadBase):
                         schedd.edit(list(already_sdf_copied_job_id_set), 'sdfCopied', '1')
                     except RuntimeError:
                         if i_try < n_try:
-                            self.logger.warning('failed to edit job {0} . Retry: {1}'.format(job_id, i_try))
+                            self.logger.warning(f'failed to edit job {job_id} . Retry: {i_try}')
                             time.sleep(1)
                         else:
-                            self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
+                            self.logger.warning(f'failed to edit job {job_id} . Skipped...')
                     else:
                         already_handled_job_id_set.update(already_sdf_copied_job_id_set)
                         already_sdf_copied_job_id_set.clear()
@@ -307,64 +329,70 @@ class SDFFetcher(ThreadBase):
                 n_try = 3
                 for i_try in range(1, n_try + 1):
                     try:
-                        schedd.edit(list(failed_and_to_skip_sdf_copied_job_id_set), 'sdfCopied', '2')
+                        schedd.edit(list(to_skip_sdf_copied_job_id_set), 'sdfCopied', '2')
                     except RuntimeError:
                         if i_try < n_try:
-                            self.logger.warning('failed to edit job {0} . Retry: {1}'.format(job_id, i_try))
+                            self.logger.warning(f'failed to edit job {job_id} . Retry: {i_try}')
                             time.sleep(1)
                         else:
-                            self.logger.warning('failed to edit job {0} . Skipped...'.format(job_id))
+                            self.logger.warning(f'failed to edit job {job_id} . Skipped...')
                     else:
-                        already_handled_job_id_set.update(failed_and_to_skip_sdf_copied_job_id_set)
-                        failed_and_to_skip_sdf_copied_job_id_set.clear()
+                        already_handled_job_id_set.update(to_skip_sdf_copied_job_id_set)
+                        to_skip_sdf_copied_job_id_set.clear()
                         break
             self.logger.info('run ends')
             time.sleep(self.sleep_period)
 
     def via_system(self, job):
-        retVal = True
+        """
+        copy submit description file when source and destination are on the same host
+        """
+        ret_val = True
         job_id = get_condor_job_id(job)
         src_path = job.get('sdfPath')
         dest_log = job.get('SUBMIT_UserLog')
         if not dest_log:
             dest_log = job.get('UserLog')
         if not dest_log:
-            self.logger.debug('{0} has no valid SUBMIT_UserLog nor UserLog. Skipped...'.format(job_id))
+            self.logger.debug(f'{job_id} has no valid SUBMIT_UserLog nor UserLog. Skipped...')
             return True
         dest_dir = os.path.dirname(dest_log)
         dest_filename = re.sub(r'.log$', '.jdl', os.path.basename(dest_log))
         dest_path = os.path.normpath(os.path.join(dest_dir, dest_filename))
         if not os.path.isfile(src_path):
-            retVal = False
-            self.logger.error('{0} is not a regular file. Skipped...'.format(src_path))
+            ret_val = False
+            self.logger.error(f'{src_path} is not a regular file. Skipped...')
         if not dest_path:
-            retVal = False
-            self.logger.error('no destination path for {0} . Skipped...'.format(src_path))
-        if retVal is True:
+            ret_val = False
+            self.logger.error(f'no destination path for {src_path} . Skipped...')
+        if ret_val is True:
             if os.path.isfile(dest_path):
-                self.logger.debug('{0} file already exists. Skipped...'.format(dest_path))
+                self.logger.debug(f'{dest_path} file already exists. Skipped...')
                 return True
             try:
                 shutil.copy2(src_path, dest_path)
                 if os.path.isfile(dest_path):
                     os.chmod(dest_path, 0o644)
-                    self.logger.debug('{0} copy made'.format(dest_path))
+                    self.logger.debug(f'{dest_path} copy made')
                 else:
-                    retVal = None
-                    self.logger.error('{0} made but not found'.format(dest_path))
-            except OSError as e:
-                if e.errno == errno.EEXIST:
-                    self.logger.debug('{0} file already exists. Skipped...'.format(dest_path))
+                    ret_val = None
+                    self.logger.error(f'{dest_path} made but not found')
+            except OSError as exc:
+                if exc.errno == errno.EEXIST:
+                    self.logger.debug(f'{dest_path} file already exists. Skipped...')
                 else:
-                    retVal = None
-                    self.logger.error(e)
-            except Exception as e:
-                retVal = None
-                self.logger.error(e)
-        return retVal
+                    ret_val = None
+                    self.logger.error(exc)
+            except Exception as exc:
+                ret_val = None
+                self.logger.error(exc)
+        return ret_val
 
 
 class XJobCleaner(ThreadBase):
+    """
+    agent to clean up jobs in removed status in the queue with forcex
+    """
 
     requirements_template = (
                     'JobStatus =?= 3 '
@@ -379,7 +407,7 @@ class XJobCleaner(ThreadBase):
             self.grace_period = grace_period
 
     def run(self):
-        self.logger.debug('startTimestamp: {0}'.format(self.startTimestamp))
+        self.logger.debug(f'startTimestamp: {self.start_timestamp}')
         while True:
             self.logger.info('run starts')
             n_try = 999
@@ -387,21 +415,22 @@ class XJobCleaner(ThreadBase):
                 try:
                     schedd = MySchedd()
                     break
-                except RuntimeError as e:
+                except RuntimeError as exc:
                     if i_try < n_try:
-                        self.logger.warning('{0} . Retry...'.format(e))
+                        self.logger.warning(f'{exc} . Retry...')
                         time.sleep(3)
                     else:
-                        self.logger.error('{0} . No more retry. Exit'.format(e))
+                        self.logger.error(f'{exc} . No more retry. Exit')
                         return
             try:
-                requirements = self.requirements_template.format(grace_period=int(self.grace_period))
+                requirements = self.requirements_template.format(
+                                        grace_period=int(self.grace_period))
                 self.logger.debug('try to remove-x jobs')
                 with global_lock:
                     act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)
-            except RuntimeError as e:
-                self.logger.error('Failed to remove-x jobs. Exit. RuntimeError: {0} '.format(e))
+            except RuntimeError as exc:
+                self.logger.error(f'Failed to remove-x jobs. Exit. RuntimeError: {exc} ')
             else:
-                self.logger.debug('act return : {act_ret}'.format(act_ret=str(dict(act_ret))))
+                self.logger.debug(f'act return : {str(dict(act_ret))}')
             self.logger.info('run ends')
             time.sleep(self.sleep_period)
