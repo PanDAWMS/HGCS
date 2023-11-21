@@ -33,7 +33,7 @@ pattern = "release_version = \"(?P<version>[^\"]+)\""
 directory = "dist"
 
 [tool.hatch.build.targets.wheel]
-packages = ["hgcs"]
+packages = ["lib/hgcs"]
 
 [tool.hatch.build.targets.wheel.shared-data]
 "temp/hgcs.cfg.template" = "etc/hgcs/hgcs.cfg.template"
