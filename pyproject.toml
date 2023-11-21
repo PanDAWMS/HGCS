@@ -27,7 +27,7 @@ Homepage = "https://github.com/PanDAWMS/HGCS"
 
 [tool.hatch.version]
 path = "pkg_info.py"
-pattern = "release_version = \"(?P<version>[^\"]+)\""
+pattern = r'release_version = \"(?P<version>[^\"]+)\"'
 
 [tool.hatch.build]
 directory = "dist"
