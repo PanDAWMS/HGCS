@@ -1,0 +1,57 @@
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "HGCS"
+dynamic = ["version"]
+description = "HGCS package"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    { name = "FaHui Lin , Harvester group", email = "atlas-adc-harvester-central-support@cern.ch" },
+]
+
+dependencies = [
+    'htcondor >= 10.3.0',
+]
+
+[project.optional-dependencies]
+kubernetes = ['kubernetes', 'pyyaml']
+mysql = ['mysqlclient']
+atlasgrid = ['uWSGI >= 2.0.20', 'htcondor >= 10.3.0', 'mysqlclient >= 2.1.1']
+
+[project.urls]
+Homepage = "https://github.com/PanDAWMS/HGCS"
+
+[tool.hatch.version]
+path = "pkg_info.py"
+pattern = "release_version = \"(?P<version>[^\"]+)\""
+
+[tool.hatch.build]
+directory = "dist"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hgcs"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"temp/hgcs.cfg.template" = "etc/hgcs"
+"temp/hgcs.service.template" = "etc/systemd/system"
+"temp/logrotate-hgcs" = "etc/logrotate.d"
+"bin" = "bin"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".github",
+    ".idea",
+]
+
+[tool.black]
+line-length=160
+
+[tool.isort]
+profile = "black"
+
+[tool.flynt]
+line-length = 160

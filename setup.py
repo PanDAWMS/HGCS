@@ -19,7 +19,7 @@ setup(
     packages=find_packages(where='lib'),
     package_dir = {'': 'lib'},
     install_requires=[
-                      'htcondor >= 9.6.0',
+                      'htcondor >= 10.3.0',
                       ],
 
     # optional pip dependencies
