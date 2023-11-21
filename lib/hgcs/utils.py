@@ -2,10 +2,10 @@
 common utilities of HGCS
 """
 
-import os
-import time
 import logging
+import os
 import threading
+import time
 
 try:
     from threading import get_ident
@@ -14,11 +14,12 @@ except ImportError:
 
 import htcondor
 
-#===============================================================
+# ===============================================================
 
 global_lock = threading.Lock()
 
-#===============================================================
+# ===============================================================
+
 
 def setup_logger(logger, pid=None, colored=True, to_file=None):
     """
@@ -29,33 +30,38 @@ def setup_logger(logger, pid=None, colored=True, to_file=None):
         colored = False
     else:
         hdlr = logging.StreamHandler()
+
     def emit_decorator(orig_func):
         def func(*args):
-            _fstr = f'[%(asctime)s %(levelname)s]({pid})(%(name)s.%(funcName)s) %(message)s'
+            _fstr = f"[%(asctime)s %(levelname)s]({pid})(%(name)s.%(funcName)s) %(message)s"
             format_str = _fstr
             if colored:
                 levelno = args[0].levelno
                 if levelno >= logging.CRITICAL:
-                    color = '\033[35;1m'
+                    color = "\033[35;1m"
                 elif levelno >= logging.ERROR:
-                    color = '\033[31;1m'
+                    color = "\033[31;1m"
                 elif levelno >= logging.WARNING:
-                    color = '\033[33;1m'
+                    color = "\033[33;1m"
                 elif levelno >= logging.INFO:
-                    color = '\033[32;1m'
+                    color = "\033[32;1m"
                 elif levelno >= logging.DEBUG:
-                    color = '\033[36;1m'
+                    color = "\033[36;1m"
                 else:
-                    color = '\033[0m'
-                format_str = f'{color}{_fstr}\033[0m'
+                    color = "\033[0m"
+                format_str = f"{color}{_fstr}\033[0m"
             formatter = logging.Formatter(format_str)
             hdlr.setFormatter(formatter)
             return orig_func(*args)
+
         return func
+
     hdlr.emit = emit_decorator(hdlr.emit)
     logger.addHandler(hdlr)
 
-#===============================================================
+
+# ===============================================================
+
 
 class ThreadBase(threading.Thread):
     """
@@ -74,7 +80,7 @@ class ThreadBase(threading.Thread):
         """
         get unique thread identifier including process ID (from OS) and thread ID (from python)
         """
-        return f'{self.os_pid}-{get_ident()}'
+        return f"{self.os_pid}-{get_ident()}"
 
     def run(self):
         """
