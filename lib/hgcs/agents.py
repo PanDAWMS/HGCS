@@ -166,7 +166,7 @@ class LogRetriever(ThreadBase):
                         ret_val = False
                         self.logger.error(f"{dest_path} made but not found")
                 else:
-                    shutil.copy2(src_path, dest_path)
+                    shutil.copy(src_path, dest_path)
                     if os.path.isfile(dest_path):
                         self.logger.debug(f"{dest_path} copy made")
                     else:
@@ -363,7 +363,7 @@ class SDFFetcher(ThreadBase):
                 self.logger.debug(f"{dest_path} file already exists. Skipped...")
                 return True
             try:
-                shutil.copy2(src_path, dest_path)
+                shutil.copy(src_path, dest_path)
                 if os.path.isfile(dest_path):
                     os.chmod(dest_path, 0o644)
                     self.logger.debug(f"{dest_path} copy made")
