@@ -14,7 +14,6 @@ except ImportError:
 
 import classad
 import htcondor
-from six import configparser
 
 # ===============================================================
 
