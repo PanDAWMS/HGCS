@@ -7,10 +7,7 @@ import os
 import threading
 import time
 
-try:
-    from threading import get_ident
-except ImportError:
-    from thread import get_ident
+from threading import get_ident
 
 import htcondor
 

@@ -7,10 +7,7 @@ import sys
 import threading
 import time
 
-try:
-    from threading import get_ident
-except ImportError:
-    from thread import get_ident
+from threading import get_ident
 
 import classad
 import htcondor
@@ -177,7 +174,7 @@ class LogRetriever(ThreadBase):
                 name = match.group(1)
                 dest_path = os.path.normpath(match.group(2))
                 if name == src_log_name:
-                    dest_log = osdest_path
+                    dest_log = dest_path
                 elif name == src_out_name:
                     dest_out = dest_path
                 elif name == src_err_name:
