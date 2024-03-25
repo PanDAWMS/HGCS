@@ -65,6 +65,7 @@ class LogRetriever(ThreadBase):
         self.retrieve_mode = retrieve_mode
 
     def run(self):
+        self.logger.info("agent starts")
         self.logger.debug(f"startTimestamp: {self.start_timestamp}")
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
@@ -86,6 +87,7 @@ class LogRetriever(ThreadBase):
                     else:
                         self.logger.error(f"{exc} . No more retry. Exit")
                         return
+            n_new_handled_jobs = 0
             for job in schedd.xquery(constraint=self.requirements, projection=self.projection):
                 job_id = get_condor_job_id(job)
                 if job_id in already_handled_job_id_set:
@@ -97,6 +99,7 @@ class LogRetriever(ThreadBase):
                     ret_val = self.via_system(job)
                     if ret_val:
                         already_handled_job_id_set.add(job_id)
+                        n_new_handled_jobs += 1
                 elif self.retrieve_mode == "condor":
                     self.via_condor_retrieve(job)
             n_try = 3
@@ -112,7 +115,7 @@ class LogRetriever(ThreadBase):
                 else:
                     already_handled_job_id_set.clear()
                     break
-            self.logger.info("run ends")
+            self.logger.info(f"run ends; handled {n_new_handled_jobs} jobs")
             time.sleep(self.sleep_period)
 
     def via_system(self, job, symlink_mode=False):
@@ -204,6 +207,7 @@ class CleanupDelayer(ThreadBase):
         self.delay_time = delay_time
 
     def run(self):
+        self.logger.info("agent starts")
         self.logger.debug(f"startTimestamp: {self.start_timestamp}")
         while True:
             self.logger.info("run starts")
@@ -267,6 +271,7 @@ class SDFFetcher(ThreadBase):
             self.limit = 6000
 
     def run(self):
+        self.logger.info("agent starts")
         self.logger.debug(f"startTimestamp: {self.start_timestamp}")
         already_handled_job_id_set = set()
         last_flush_timestamp = time.time()
@@ -290,6 +295,8 @@ class SDFFetcher(ThreadBase):
                         return
             already_sdf_copied_job_id_set = set()
             to_skip_sdf_copied_job_id_set = set()
+            n_new_handled_jobs = 0
+            n_new_skipped_jobs = 0
             try:
                 jobs_iter = schedd.xquery(constraint=self.requirements, projection=self.projection, limit=self.limit)
                 for job in jobs_iter:
@@ -300,8 +307,10 @@ class SDFFetcher(ThreadBase):
                     ret_val = self.via_system(job)
                     if ret_val is True:
                         already_sdf_copied_job_id_set.add(job_id)
+                        n_new_handled_jobs += 1
                     elif ret_val is False:
                         to_skip_sdf_copied_job_id_set.add(job_id)
+                        n_new_skipped_jobs += 1
             except RuntimeError as exc:
                 self.logger.error(f"Failed to query jobs. Exit. RuntimeError: {exc} ")
             else:
@@ -333,7 +342,7 @@ class SDFFetcher(ThreadBase):
                         already_handled_job_id_set.update(to_skip_sdf_copied_job_id_set)
                         to_skip_sdf_copied_job_id_set.clear()
                         break
-            self.logger.info("run ends")
+            self.logger.info(f"run ends; handled {n_new_handled_jobs} jobs, skipped {n_new_skipped_jobs} jobs")
             time.sleep(self.sleep_period)
 
     def via_system(self, job):
@@ -397,6 +406,7 @@ class XJobCleaner(ThreadBase):
             self.grace_period = grace_period
 
     def run(self):
+        self.logger.info("agent starts")
         self.logger.debug(f"startTimestamp: {self.start_timestamp}")
         while True:
             self.logger.info("run starts")
@@ -412,6 +422,7 @@ class XJobCleaner(ThreadBase):
                     else:
                         self.logger.error(f"{exc} . No more retry. Exit")
                         return
+            res_str = str(None)
             try:
                 requirements = self.requirements_template.format(grace_period=int(self.grace_period))
                 self.logger.debug("try to remove-x jobs")
@@ -420,6 +431,6 @@ class XJobCleaner(ThreadBase):
             except RuntimeError as exc:
                 self.logger.error(f"Failed to remove-x jobs. Exit. RuntimeError: {exc} ")
             else:
-                self.logger.debug(f"act return : {str(dict(act_ret))}")
-            self.logger.info("run ends")
+                res_str = str(dict(act_ret))
+            self.logger.info("run ends; return: {res_str}")
             time.sleep(self.sleep_period)

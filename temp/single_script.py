@@ -62,10 +62,9 @@ class ThreadBase(threading.Thread):
         threading.Thread.__init__(self)
         self.os_pid = os.getpid()
         self.logger = logging.getLogger(self.__class__.__name__)
-        setupLogger(self.logger, pid=self.get_pid, colored=False)
+        setupLogger(self.logger, pid=self.get_pid(), colored=False)
         self.start_timestamp = time.time()
 
-    @property
     def get_pid(self):
         return f"{self.os_pid}-{get_ident()}"
 
