@@ -11,7 +11,6 @@ from threading import get_ident
 
 import htcondor
 
-from ...HGCS.pkg_info import release_version
 
 # ===============================================================
 
