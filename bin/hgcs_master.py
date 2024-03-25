@@ -20,18 +20,6 @@ from hgcs import utils  # noqa: E402
 # sys.path.insert(0, _LIB_PATH)
 
 
-# ===============================================================
-
-LOG_LEVEL_MAP = {
-    "ERROR": logging.ERROR,
-    "WARNING": logging.WARNING,
-    "INFO": logging.INFO,
-    "DEBUG": logging.DEBUG,
-}
-
-# ===============================================================
-
-
 def main():
     """
     main function
@@ -91,15 +79,20 @@ def main():
                     "flush_period": getattr(section, "flush_period", None),
                     "grace_period": getattr(section, "grace_period", None),
                     "limit": getattr(section, "limit", None),
+                    "logger_format_colored": logger_format_colored,
+                    "log_level": log_level,
+                    "log_file": log_file,
                 }
                 agent_instance = class_obj(**param_dict)
-                utils.setup_logger(agent_instance.logger, pid=agent_instance.get_pid, colored=logger_format_colored, to_file=log_file)
-                logging_log_level = LOG_LEVEL_MAP.get(log_level, logging.ERROR)
-                agent_instance.logger.setLevel(logging_log_level)
                 thread_list.append(agent_instance)
+    # master log
+    main_logger = logging.getLogger("hgcs_main")
+    utils.setup_logger(main_logger, pid=os.getpid(), colored=logger_format_colored, to_file=log_file)
+    main_logger.info("This is HGCS")
     # run threads
     for thr in thread_list:
         print(f"Start thread of agent {thr.__class__.__name__}")
+        main_logger.info(f"Start thread of agent {thr.__class__.__name__}")
         thr.start()
 
 

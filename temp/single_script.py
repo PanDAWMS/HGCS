@@ -7,14 +7,10 @@ import sys
 import threading
 import time
 
-try:
-    from threading import get_ident
-except ImportError:
-    from thread import get_ident
+from threading import get_ident
 
 import classad
 import htcondor
-from six import configparser
 
 # ===============================================================
 
@@ -66,10 +62,9 @@ class ThreadBase(threading.Thread):
         threading.Thread.__init__(self)
         self.os_pid = os.getpid()
         self.logger = logging.getLogger(self.__class__.__name__)
-        setupLogger(self.logger, pid=self.get_pid, colored=False)
+        setupLogger(self.logger, pid=self.get_pid(), colored=False)
         self.start_timestamp = time.time()
 
-    @property
     def get_pid(self):
         return f"{self.os_pid}-{get_ident()}"
 
@@ -178,7 +173,7 @@ class LogRetriever(ThreadBase):
                 name = match.group(1)
                 dest_path = os.path.normpath(match.group(2))
                 if name == src_log_name:
-                    dest_log = osdest_path
+                    dest_log = dest_path
                 elif name == src_out_name:
                     dest_out = dest_path
                 elif name == src_err_name:

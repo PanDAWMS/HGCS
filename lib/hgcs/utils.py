@@ -7,16 +7,25 @@ import os
 import threading
 import time
 
-try:
-    from threading import get_ident
-except ImportError:
-    from thread import get_ident
+from threading import get_ident
 
 import htcondor
+
 
 # ===============================================================
 
 global_lock = threading.Lock()
+
+# ===============================================================
+
+# ===============================================================
+
+LOG_LEVEL_MAP = {
+    "ERROR": logging.ERROR,
+    "WARNING": logging.WARNING,
+    "INFO": logging.INFO,
+    "DEBUG": logging.DEBUG,
+}
 
 # ===============================================================
 
@@ -68,14 +77,21 @@ class ThreadBase(threading.Thread):
     base class of thread to run HGCS agents
     """
 
-    def __init__(self, sleep_period=60, **kwarg):
+    def __init__(self, sleep_period=60, **kwargs):
         threading.Thread.__init__(self)
         self.os_pid = os.getpid()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.sleep_period = sleep_period
         self.start_timestamp = time.time()
+        self.logger_format_colored = kwargs.get("logger_format_colored")
+        self.log_level = kwargs.get("log_level")
+        self.log_file = kwargs.get("log_file")
+    
+    def set_logger(self):
+        setup_logger(self.logger, pid=self.get_pid(), colored=self.logger_format_colored, to_file=self.log_file)
+        logging_log_level = LOG_LEVEL_MAP.get(self.log_level, logging.ERROR)
+        self.logger.setLevel(logging_log_level)
 
-    @property
     def get_pid(self):
         """
         get unique thread identifier including process ID (from OS) and thread ID (from python)
