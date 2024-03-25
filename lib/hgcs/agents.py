@@ -65,6 +65,7 @@ class LogRetriever(ThreadBase):
         self.retrieve_mode = retrieve_mode
 
     def run(self):
+        self.set_logger()
         self.logger.info("agent starts")
         self.logger.debug(f"startTimestamp: {self.start_timestamp}")
         already_handled_job_id_set = set()
@@ -207,6 +208,7 @@ class CleanupDelayer(ThreadBase):
         self.delay_time = delay_time
 
     def run(self):
+        self.set_logger()
         self.logger.info("agent starts")
         self.logger.debug(f"startTimestamp: {self.start_timestamp}")
         while True:
@@ -271,6 +273,7 @@ class SDFFetcher(ThreadBase):
             self.limit = 6000
 
     def run(self):
+        self.set_logger()
         self.logger.info("agent starts")
         self.logger.debug(f"startTimestamp: {self.start_timestamp}")
         already_handled_job_id_set = set()
@@ -406,6 +409,7 @@ class XJobCleaner(ThreadBase):
             self.grace_period = grace_period
 
     def run(self):
+        self.set_logger()
         self.logger.info("agent starts")
         self.logger.debug(f"startTimestamp: {self.start_timestamp}")
         while True:
@@ -432,5 +436,5 @@ class XJobCleaner(ThreadBase):
                 self.logger.error(f"Failed to remove-x jobs. Exit. RuntimeError: {exc} ")
             else:
                 res_str = str(dict(act_ret))
-            self.logger.info("run ends; return: {res_str}")
+            self.logger.info(f"run ends; return: {res_str}")
             time.sleep(self.sleep_period)

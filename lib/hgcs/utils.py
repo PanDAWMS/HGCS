@@ -85,7 +85,6 @@ class ThreadBase(threading.Thread):
         self.logger_format_colored = kwargs.get("logger_format_colored")
         self.log_level = kwargs.get("log_level")
         self.log_file = kwargs.get("log_file")
-        self.set_logger()
     
     def set_logger(self):
         setup_logger(self.logger, pid=self.get_pid(), colored=self.logger_format_colored, to_file=self.log_file)
