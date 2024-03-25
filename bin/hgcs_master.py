@@ -88,7 +88,7 @@ def main():
     # master log
     main_logger = logging.getLogger("hgcs_main")
     utils.setup_logger(main_logger, pid=os.getpid(), colored=logger_format_colored, to_file=log_file)
-    main_logger.info(f"This is HGCS")
+    main_logger.info("This is HGCS")
     # run threads
     for thr in thread_list:
         print(f"Start thread of agent {thr.__class__.__name__}")
