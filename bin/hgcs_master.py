@@ -12,6 +12,8 @@ from hgcs import agents  # noqa: E402
 from hgcs import hgcs_config  # noqa: E402
 from hgcs import utils  # noqa: E402
 
+from ..HGCS.pkg_info import release_version
+
 # # Get main directory path
 # _MAIN_DIR = os.path.join( os.path.dirname(__file__), '..' )
 #
@@ -85,9 +87,14 @@ def main():
                 }
                 agent_instance = class_obj(**param_dict)
                 thread_list.append(agent_instance)
+    # master log
+    main_logger = logging.getLogger("hgcs_main")
+    utils.setup_logger(main_logger, pid=os.getpid(), colored=logger_format_colored, to_file=log_file)
+    main_logger.info(f"This is HGCS v{release_version}")
     # run threads
     for thr in thread_list:
         print(f"Start thread of agent {thr.__class__.__name__}")
+        main_logger.info(f"Start thread of agent {thr.__class__.__name__}")
         thr.start()
 
 
