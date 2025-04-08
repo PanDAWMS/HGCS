@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import time
+import traceback
 
 import htcondor
 from hgcs.utils import MySchedd, ThreadBase, global_lock  # noqa: E402
@@ -89,7 +90,7 @@ class LogRetriever(ThreadBase):
                         self.logger.error(f"{exc} . No more retry. Exit")
                         return
             n_new_handled_jobs = 0
-            for job in schedd.xquery(constraint=self.requirements, projection=self.projection):
+            for job in schedd.query(constraint=self.requirements, projection=self.projection):
                 job_id = get_condor_job_id(job)
                 if job_id in already_handled_job_id_set:
                     continue
@@ -225,7 +226,7 @@ class CleanupDelayer(ThreadBase):
                     else:
                         self.logger.error(f"{exc} . No more retry. Exit")
                         return
-            job_id_list = [get_condor_job_id(job) for job in schedd.xquery(constraint=self.requirements)]
+            job_id_list = [get_condor_job_id(job) for job in schedd.query(constraint=self.requirements)]
             n_jobs = len(job_id_list)
             n_try = 3
             for i_try in range(1, n_try + 1):
@@ -301,7 +302,7 @@ class SDFFetcher(ThreadBase):
             n_new_handled_jobs = 0
             n_new_skipped_jobs = 0
             try:
-                jobs_iter = schedd.xquery(constraint=self.requirements, projection=self.projection, limit=self.limit)
+                jobs_iter = schedd.query(constraint=self.requirements, projection=self.projection, limit=self.limit)
                 for job in jobs_iter:
                     job_id = get_condor_job_id(job)
                     if job_id in already_handled_job_id_set:
@@ -327,6 +328,9 @@ class SDFFetcher(ThreadBase):
                             time.sleep(1)
                         else:
                             self.logger.warning(f"failed to edit job {job_id} . Skipped...")
+                    except Exception:
+                        self.logger.error(f"failed to edit job {job_id} with error ; {traceback.format_exc()}")
+                        break
                     else:
                         already_handled_job_id_set.update(already_sdf_copied_job_id_set)
                         already_sdf_copied_job_id_set.clear()
@@ -341,6 +345,9 @@ class SDFFetcher(ThreadBase):
                             time.sleep(1)
                         else:
                             self.logger.warning(f"failed to edit job {job_id} . Skipped...")
+                    except Exception:
+                        self.logger.error(f"failed to edit job {job_id} with error ; {traceback.format_exc()}")
+                        break
                     else:
                         already_handled_job_id_set.update(to_skip_sdf_copied_job_id_set)
                         to_skip_sdf_copied_job_id_set.clear()
