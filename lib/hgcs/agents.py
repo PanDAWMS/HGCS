@@ -436,12 +436,20 @@ class XJobCleaner(ThreadBase):
             res_str = str(None)
             try:
                 requirements = self.requirements_template.format(grace_period=int(self.grace_period))
-                self.logger.debug("try to remove-x jobs")
-                with global_lock:
-                    act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)
+                jobs_iter = schedd.query(constraint=requirements, projection=["ClusterId", "ProcId"])
+                n_jobs = 0
+                for job in jobs_iter:
+                    job_id = get_condor_job_id(job)
+                    self.logger.debug(f"to remove condor job {job_id}")
+                    n_jobs += 1
+                if n_jobs == 0:
+                    self.logger.info("no job to remove; skipped")
+                else:
+                    self.logger.debug(f"try to remove-x {n_jobs} jobs")
+                    with global_lock:
+                        act_ret = schedd.act(htcondor.JobAction.RemoveX, requirements)
+                    res_str = str(dict(act_ret))
+                    self.logger.info(f"run ends; return: {res_str}")
             except RuntimeError as exc:
                 self.logger.error(f"Failed to remove-x jobs. Exit. RuntimeError: {exc} ")
-            else:
-                res_str = str(dict(act_ret))
-            self.logger.info(f"run ends; return: {res_str}")
             time.sleep(self.sleep_period)
