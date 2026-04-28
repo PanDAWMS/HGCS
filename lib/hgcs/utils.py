@@ -9,7 +9,11 @@ import time
 
 from threading import get_ident
 
-import htcondor
+try:
+    # try to import htcondor version 2 for htcondor version >= 25
+    import htcondor2 as htcondor
+except ImportError:
+    import htcondor
 
 
 # ===============================================================
