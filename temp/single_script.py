@@ -9,8 +9,11 @@ import time
 
 from threading import get_ident
 
-import classad
-import htcondor
+try:
+    # try to import htcondor version 2 for htcondor version >= 25
+    import htcondor2 as htcondor
+except ImportError:
+    import htcondor
 
 # ===============================================================
 
@@ -121,7 +124,7 @@ class LogRetriever(ThreadBase):
                     else:
                         self.logger.error(f"{e} . No more retry. Exit")
                         return
-            for job in schedd.xquery(constraint=self.requirements, projection=self.projection):
+            for job in schedd.query(constraint=self.requirements, projection=self.projection):
                 job_id = get_condor_job_id(job)
                 if job_id in already_handled_job_id_set:
                     continue
@@ -244,10 +247,10 @@ class CleanupDelayer(ThreadBase):
                     else:
                         self.logger.error(f"{e} . No more retry. Exit")
                         return
-            # for job in schedd.xquery(constraint=self.requirements):
+            # for job in schedd.query(constraint=self.requirements):
             #     job_id = get_condor_job_id(job)
             #     self.logger.debug('to adjust LeaveJobInQueue of condor job {0}'.format(job_id))
-            job_id_list = [get_condor_job_id(job) for job in schedd.xquery(constraint=self.requirements)]
+            job_id_list = [get_condor_job_id(job) for job in schedd.query(constraint=self.requirements)]
             n_jobs = len(job_id_list)
             n_try = 3
             for i_try in range(1, n_try + 1):
@@ -311,7 +314,7 @@ class SDFFetcher(ThreadBase):
             already_sdf_copied_job_id_set = set()
             failed_and_to_skip_sdf_copied_job_id_set = set()
             try:
-                jobs_iter = schedd.xquery(constraint=self.requirements, projection=self.projection, limit=self.limit)
+                jobs_iter = schedd.query(constraint=self.requirements, projection=self.projection, limit=self.limit)
                 for job in jobs_iter:
                     job_id = get_condor_job_id(job)
                     if job_id in already_handled_job_id_set:
@@ -404,14 +407,14 @@ def testing():
     Test function
     """
     schedd = MySchedd()
-    # for job in schedd.xquery(projection=['ClusterId', 'ProcId', 'JobStatus']):
+    # for job in schedd.query(projection=['ClusterId', 'ProcId', 'JobStatus']):
     #     print(repr(job))
     # requirements = (
     #     'JobStatus == 4 '
     #     '&& User == "atlpan@cern.ch" '
     #     '&& ClusterId == 18769 '
     # )
-    # for job in schedd.xquery(constraint=requirements):
+    # for job in schedd.query(constraint=requirements):
     #     print(job.get('ClusterId'), job.get('JobStatus'), job.get('SUBMIT_UserLog', None),  job.get('ffffff', None))
     sleep_period = 300
     thread_list = []
